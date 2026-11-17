@@ -13,12 +13,17 @@ the app and exceeded the bridge deadline. Async Electron safeStorage, serialized
 an atomic encrypted file and a matching prompt deadline fix it. Tests cover key rotation,
 locked storage and logout racing an OS prompt; plaintext fallback is not allowed.
 
-Apple sign-in is implemented in web, desktop and iOS bridge code, but is **not live**.
-The Apple Developer registration is prepared; identifier/key creation awaits approval.
+Apple sign-in is configured in production. With owner approval, the primary App ID,
+Services ID and dedicated key were created and the exact production callback registered.
+Both secrets are stored in Cloudflare; `/api/config` reports `appleConfigured:true`.
+The installed macOS app's Apple button opens Apple's real Rankwisp Web login page.
 Signed-provider tests cover the form-post callback, independent browser state, token
 validation, private relay email, encrypted grant storage/revocation, native proof/replay,
 cancellation and refusing automatic email linking. Native failure callbacks include a device return link and preserve the specific cancellation/account-link error. Real Apple account login is still
-required after activation. iOS physical-device and Windows runtime checks remain open.
+awaiting the user's personal Apple confirmation. iOS physical-device and Windows runtime
+checks remain open. After activation, all 26 Worker and 42 Node tests passed again and
+the production build succeeded. The Apple test environment explicitly overrides the
+production redirect URI so fixture token exchanges cannot inherit the live callback.
 
 Live authenticated onboarding exposed Apple's HTTP 429 response from the hosted provider
 coordinator. The application previously mapped it to 502, which Cloudflare replaced with
@@ -32,7 +37,7 @@ Apple's provider response; this is not recorded as a successful live measurement
 Validation: 42 Node tests, 26 workerd tests 13 browser tests, 8 marketing tests and 10 native-bridge tests passed. These include
 provider fixtures; the real Google flow above is separate evidence. Distribution remains
 an unsigned preview, not a notarized or commercially approved release. AI generation,
-purchases and Apple login activation are still pending.
+purchases and the end-to-end personal Apple account confirmation are still pending.
 
 The full dependency audit currently **fails** on the unpatched development dependency
 `picomatch` 4.0.7 ([GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf),

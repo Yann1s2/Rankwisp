@@ -85,10 +85,12 @@ is deployed.
 
 ## Sign in with Apple
 
-The web/native implementation and signed-provider tests are complete. Production activation
-is pending creation of the Apple identifiers/key by the account owner. Until the full
-configuration exists, `/api/config` returns `appleConfigured:false`; the app does not
-claim a working Apple login.
+The web/native implementation and signed-provider tests are complete. Production Apple
+identifiers and a dedicated Sign in with Apple key were registered with the owner's
+approval on 17 November 2026. The private key and grant-encryption key are stored as
+Cloudflare secrets, outside source control. `/api/config` returns `appleConfigured:true`.
+The packaged macOS app opens Apple's real authorization page for Rankwisp Web;
+personal account confirmation and the resulting session are still being verified.
 
 Configure in Apple Developer → Certificates, Identifiers & Profiles:
 

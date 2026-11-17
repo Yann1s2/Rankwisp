@@ -28,6 +28,7 @@ beforeAll(async () => {
     APPLE_CLIENT_ID: "ch.zhstudio.rankwisp.web",
     APPLE_TEAM_ID: "TESTTEAM01",
     APPLE_KEY_ID: "TESTKEY001",
+    APPLE_REDIRECT_URI: origin + "/api/auth/apple/callback",
     APPLE_PRIVATE_KEY: await exportPKCS8(client.privateKey),
     APPLE_TOKEN_ENCRYPTION_KEY: Buffer.from(
       crypto.getRandomValues(new Uint8Array(32)),
@@ -136,6 +137,9 @@ it("Apple availability fails closed; authorization uses a separate POST binding 
   expect((await call("/api/config")).status).toBe(200);
   const start = await begin();
   expect(start.url.origin).toBe("https://appleid.apple.com");
+  expect(start.url.searchParams.get("redirect_uri")).toBe(
+    origin + "/api/auth/apple/callback",
+  );
   expect(start.url.searchParams.get("response_mode")).toBe("form_post");
   expect(start.url.searchParams.get("scope")).toBe("email");
   expect(start.response.headers.get("set-cookie")).toContain(
