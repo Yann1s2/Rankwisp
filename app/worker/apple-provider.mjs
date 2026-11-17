@@ -57,7 +57,7 @@ async function encryptionKey(env) {
     "decrypt",
   ]);
 }
-export async function storeAppleGrant(env, userId, refreshToken) {
+export async function encryptAppleGrant(env, userId, refreshToken) {
   if (
     typeof refreshToken !== "string" ||
     !refreshToken ||
@@ -70,15 +70,18 @@ export async function storeAppleGrant(env, userId, refreshToken) {
     await encryptionKey(env),
     new TextEncoder().encode(refreshToken),
   );
+  return (
+    Buffer.from(iv).toString("base64") +
+    "." +
+    Buffer.from(encrypted).toString("base64")
+  );
+}
+export async function storeAppleGrant(env, userId, refreshToken) {
+  const encrypted = await encryptAppleGrant(env, userId, refreshToken);
   await env.IDENTITY.prepare(
     "INSERT INTO apple_grants(user_id,token) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET token=excluded.token",
   )
-    .bind(
-      userId,
-      Buffer.from(iv).toString("base64") +
-        "." +
-        Buffer.from(encrypted).toString("base64"),
-    )
+    .bind(userId, encrypted)
     .run();
 }
 export async function revokeAppleGrant(env, userId) {

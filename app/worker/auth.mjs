@@ -3,6 +3,7 @@ import {
   appleClientSecret,
   verifyAppleIDToken,
   storeAppleGrant,
+  encryptAppleGrant,
 } from "./apple-provider.mjs";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { hash } from "../server/db-core.mjs";
@@ -69,18 +70,27 @@ export async function sessionUser(request, env) {
     cookie(request, "rankwisp");
   if (!raw || !/^[A-Za-z0-9_-]{43}$/.test(raw)) return null;
   const user = await env.IDENTITY.prepare(
-    "SELECT u.*,s.created AS authenticated_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=? AND s.expires>?",
+    "SELECT u.*,s.created AS authenticated_at,COALESCE(p.provider,CASE WHEN u.google_sub LIKE 'apple:%' THEN 'apple' ELSE 'google' END) AS auth_provider FROM users u JOIN sessions s ON s.user_id=u.id LEFT JOIN session_providers p ON p.token_hash=s.token_hash WHERE s.token_hash=? AND s.expires>?",
   )
     .bind(hash(raw), Date.now())
     .first();
   return user ? { ...user, tokenHash: hash(raw) } : null;
 }
-async function makeSession(env, id) {
+async function makeSession(env, id, provider) {
   const raw = randomToken(),
     now = Date.now();
-  await env.IDENTITY.prepare("INSERT INTO sessions VALUES(?,?,?,?)")
-    .bind(hash(raw), id, now, now + 7 * 86400000)
-    .run();
+  await env.IDENTITY.batch([
+    env.IDENTITY.prepare("INSERT INTO sessions VALUES(?,?,?,?)").bind(
+      hash(raw),
+      id,
+      now,
+      now + 7 * 86400000,
+    ),
+    env.IDENTITY.prepare("INSERT INTO session_providers VALUES(?,?)").bind(
+      hash(raw),
+      provider,
+    ),
+  ]);
   return raw;
 }
 export async function verifyGoogleIDToken(
@@ -113,6 +123,85 @@ export async function verifyGoogleIDToken(
     throw fail("GOOGLE_TOKEN_INVALID", 401);
   return { sub: payload.sub, email: payload.email.toLowerCase() };
 }
+const appleLinkCookie = (value, age = 600) =>
+  `rankwisp_apple_link=${value}; Path=/api/auth; HttpOnly; SameSite=Lax; Secure; Max-Age=${age}`;
+async function readAppleLink(request, env, token) {
+  const binder = cookie(request, "rankwisp_apple_link");
+  if (
+    !/^[A-Za-z0-9_-]{43}$/.test(token || "") ||
+    !/^[A-Za-z0-9_-]{43}$/.test(binder || "")
+  )
+    throw fail("AUTH_STATE_INVALID", 401);
+  const link = await env.IDENTITY.prepare(
+    "SELECT * FROM apple_link_requests WHERE request_hash=? AND browser_hash=? AND expires>?",
+  )
+    .bind(hash(token), hash(binder), Date.now())
+    .first();
+  if (!link) throw fail("AUTH_EXPIRED", 401);
+  return link;
+}
+function appleLinkPage(env, token, verified, binder) {
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy":
+      "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+  });
+  if (binder) headers.append("Set-Cookie", appleLinkCookie(binder));
+  return new Response(
+    `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Link Apple to Rankwisp</title><style>body{background:#edf2f4;color:#2b2d42;font:18px system-ui;max-width:36rem;margin:14vh auto;padding:28px;line-height:1.6}a,button{display:inline-block;background:#2b2d42;color:#edf2f4;padding:14px 22px;border:0;border-radius:16px;text-decoration:none;font:inherit;cursor:pointer}.secondary{background:transparent;color:#2b2d42}form{margin-top:20px}h1{line-height:1.15}</style><h1>One workspace. Both sign-in options.</h1><p>Your Apple email already belongs to a Google account in Rankwisp. Confirm that Google account to connect Apple without changing your apps, history or plan.</p>${
+      verified
+        ? `<p>Your existing Google account is confirmed. Linking allows this Apple account to open the same workspace.</p><form method="post" action="/api/auth/apple/link"><input type="hidden" name="request" value="${token}"><button name="action" value="link">Link Apple and continue</button><button class="secondary" name="action" value="cancel">Cancel</button></form>`
+        : `<a href="/api/auth/google/start?link=${token}">Confirm existing Google account</a><form method="post" action="/api/auth/apple/link"><input type="hidden" name="request" value="${token}"><button class="secondary" name="action" value="cancel">Cancel</button></form>`
+    }<p style="font-size:14px">Nothing is linked until you confirm both accounts and choose “Link Apple and continue”.</p></html>`,
+    { headers },
+  );
+}
+async function prepareAppleLink(
+  request,
+  env,
+  saved,
+  userId,
+  subjectKey,
+  refreshToken,
+) {
+  const existingLink = await env.IDENTITY.prepare(
+    "SELECT user_id FROM apple_identities WHERE user_id=?",
+  )
+    .bind(userId)
+    .first();
+  if (existingLink) throw fail("ACCOUNT_LINK_REQUIRED", 409);
+  const token = randomToken(),
+    binder = randomToken();
+  const expires = Math.min(Date.now() + 600000, saved.expires);
+  const encrypted = await encryptAppleGrant(env, userId, refreshToken);
+  await env.IDENTITY.prepare(
+    "INSERT INTO apple_link_requests VALUES(?,?,?,?,?,?,?,?)",
+  )
+    .bind(
+      hash(token),
+      hash(binder),
+      userId,
+      subjectKey,
+      encrypted,
+      saved.native_ticket,
+      saved.platform,
+      expires,
+    )
+    .run();
+  // Even an existing browser session must explicitly confirm the link; Google
+  // reauthentication is required if that session is absent, stale or unrelated.
+  const user = await sessionUser(request, env);
+  return appleLinkPage(
+    env,
+    token,
+    user?.id === userId &&
+      user.auth_provider === "google" &&
+      Date.now() - user.authenticated_at < 600000,
+    binder,
+  );
+}
 export async function authRoute(request, env) {
   const provider = new URL(request.url).pathname.startsWith("/api/auth/apple/")
     ? "apple"
@@ -133,6 +222,67 @@ export async function authRoute(request, env) {
   const url = new URL(request.url),
     path = url.pathname,
     secure = new URL(env.PUBLIC_ORIGIN).protocol === "https:";
+  if (path === "/api/auth/apple/link") {
+    if (!["GET", "POST"].includes(request.method))
+      throw fail("METHOD_NOT_ALLOWED", 405);
+    const params =
+      request.method === "POST"
+        ? new URLSearchParams(
+            new TextDecoder().decode(await readLimited(request, 4096)),
+          )
+        : url.searchParams;
+    if (params.getAll("request").length !== 1) throw fail("INVALID_INPUT");
+    const token = params.get("request");
+    const link = await readAppleLink(request, env, token);
+    const user = await sessionUser(request, env);
+    const verified =
+      user?.id === link.user_id &&
+      user.auth_provider === "google" &&
+      Date.now() - user.authenticated_at < 600000;
+    if (request.method === "GET") return appleLinkPage(env, token, verified);
+    if (request.headers.get("origin") !== new URL(env.PUBLIC_ORIGIN).origin)
+      throw fail("ORIGIN_DENIED", 403);
+    if (params.get("action") === "cancel") {
+      await env.IDENTITY.prepare(
+        "DELETE FROM apple_link_requests WHERE request_hash=?",
+      )
+        .bind(hash(token))
+        .run();
+      return finishAuth(
+        env,
+        "apple",
+        { ...link, return_to: "/app" },
+        null,
+        "APPLE_CANCELLED",
+      );
+    }
+    if (params.get("action") !== "link" || !verified)
+      throw fail("REAUTH_REQUIRED", 403);
+    // A single D1 transaction consumes the proof and binds both identity and grant.
+    // No account data is moved, and no identity is ever linked by email alone.
+    const now = Date.now();
+    const results = await env.IDENTITY.batch([
+      env.IDENTITY.prepare(
+        "INSERT INTO apple_identities(subject_key,user_id) SELECT subject_key,user_id FROM apple_link_requests WHERE request_hash=? AND expires>?",
+      ).bind(hash(token), now),
+      env.IDENTITY.prepare(
+        "INSERT INTO apple_grants(user_id,token) SELECT user_id,grant_token FROM apple_link_requests WHERE request_hash=? AND expires>?",
+      ).bind(hash(token), now),
+      env.IDENTITY.prepare(
+        "DELETE FROM apple_link_requests WHERE request_hash=? AND expires>?",
+      ).bind(hash(token), now),
+    ]);
+    if (results[2].meta.changes !== 1) throw fail("AUTH_EXPIRED", 401);
+    const response = await finishAuth(
+      env,
+      "apple",
+      { ...link, return_to: "/app" },
+      user,
+      null,
+    );
+    response.headers.append("Set-Cookie", appleLinkCookie("", 0));
+    return response;
+  }
   if (
     path === `/api/auth/${provider}/native/start` &&
     request.method === "POST"
@@ -217,7 +367,10 @@ export async function authRoute(request, env) {
       .bind(consumed.user_id)
       .first();
     if (!user) throw fail("AUTH_EXPIRED", 401);
-    return json({ token: await makeSession(env, user.id), account: user });
+    return json({
+      token: await makeSession(env, user.id, provider),
+      account: user,
+    });
   }
   if (path === `/api/auth/${provider}/start` && request.method === "GET") {
     // Bind state and the browser cookie on the same host as the registered callback.
@@ -231,6 +384,11 @@ export async function authRoute(request, env) {
       if (ticket) {
         if (!/^[A-Za-z0-9_-]{43}$/.test(ticket)) throw fail("INVALID_INPUT");
         canonical.searchParams.set("ticket", ticket);
+      }
+      const link = url.searchParams.get("link");
+      if (link) {
+        if (!/^[A-Za-z0-9_-]{43}$/.test(link)) throw fail("INVALID_INPUT");
+        canonical.searchParams.set("link", link);
       }
       return Response.redirect(canonical.href, 303);
     }
@@ -256,7 +414,13 @@ export async function authRoute(request, env) {
       binder = randomToken(),
       nonce = randomToken(),
       verifier = randomToken();
-    const returnTo = "/app";
+    let returnTo = "/app";
+    if (!apple && url.searchParams.has("link")) {
+      if (ticket) throw fail("INVALID_INPUT");
+      const linkToken = url.searchParams.get("link");
+      await readAppleLink(request, env, linkToken);
+      returnTo = "/api/auth/apple/link?request=" + linkToken;
+    }
     await env.IDENTITY.prepare(
       `INSERT INTO ${stateTable} VALUES(?,?,?,?,?,?,?,?)`,
     )
@@ -384,13 +548,36 @@ export async function authRoute(request, env) {
       )
         .bind(subjectKey)
         .first();
+      if (!user && apple) {
+        user = await env.IDENTITY.prepare(
+          "SELECT u.* FROM users u JOIN apple_identities a ON a.user_id=u.id WHERE a.subject_key=?",
+        )
+          .bind(subjectKey)
+          .first();
+      }
       if (!user) {
         const existing = await env.IDENTITY.prepare(
-          "SELECT id FROM users WHERE email=?",
+          "SELECT id,google_sub FROM users WHERE email=?",
         )
           .bind(identity.email)
           .first();
-        if (existing) throw fail("ACCOUNT_LINK_REQUIRED", 409);
+        if (existing) {
+          if (
+            apple &&
+            !existing.google_sub.startsWith("apple:") &&
+            googleConfigured(env)
+          ) {
+            return await prepareAppleLink(
+              request,
+              env,
+              saved,
+              existing.id,
+              subjectKey,
+              tokenData.refresh_token,
+            );
+          }
+          throw fail("ACCOUNT_LINK_REQUIRED", 409);
+        }
         const id = crypto.randomUUID();
         await env.IDENTITY.prepare(
           "INSERT INTO users VALUES(?,?,?,?,?) ON CONFLICT(google_sub) DO NOTHING",
@@ -417,79 +604,9 @@ export async function authRoute(request, env) {
         ? e.message
         : prefix + "_AUTH_FAILED";
     }
-    const headers = new Headers({
-      "Cache-Control": "no-store",
-      "Referrer-Policy": "no-referrer",
-      "Set-Cookie": bindingCookie("", secure).replace(
-        "Max-Age=600",
-        "Max-Age=0",
-      ),
-    });
-    if (saved.native_ticket) {
-      const handoff = await env.IDENTITY.prepare(
-        `SELECT handoff_ticket FROM ${nativeTable} WHERE ticket_hash=? AND expires>?`,
-      )
-        .bind(saved.native_ticket, Date.now())
-        .first();
-      if (
-        !handoff?.handoff_ticket ||
-        !/^[A-Za-z0-9_-]{43}$/.test(handoff.handoff_ticket)
-      )
-        failure = prefix + "_AUTH_FAILED";
-      // Failure also needs a device-local return link: the app then displays the
-      // provider cancellation/linking error instead of waiting for its timeout.
-      const completionCode = /^[A-Za-z0-9_-]{43}$/.test(
-        handoff?.handoff_ticket || "",
-      )
-        ? randomToken()
-        : null;
-      await env.IDENTITY.prepare(
-        `UPDATE ${nativeTable} SET status=?,user_id=?,completion_hash=? WHERE ticket_hash=? AND expires>?`,
-      )
-        .bind(
-          failure
-            ? failure === prefix + "_CANCELLED"
-              ? "cancelled"
-              : failure === "ACCOUNT_LINK_REQUIRED"
-                ? "link_required"
-                : "failed"
-            : "complete",
-          user?.id || null,
-          completionCode ? hash(completionCode) : null,
-          saved.native_ticket,
-          Date.now(),
-        )
-        .run();
-      headers.set("Content-Type", "text/html; charset=utf-8");
-      const message =
-        failure === "ACCOUNT_LINK_REQUIRED"
-          ? "This email already uses another sign-in provider. Return to Rankwisp and use your original sign-in method."
-          : failure
-            ? "Return to Rankwisp to continue or try again."
-            : "Complete sign-in in the Rankwisp app on this device.";
-      headers.set(
-        "Content-Security-Policy",
-        "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
-      );
-      return new Response(
-        `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Rankwisp sign-in</title><body style="background:#edf2f4;color:#2b2d42;font:18px system-ui;max-width:34rem;margin:18vh auto;padding:24px"><h1>${failure ? "Sign-in was not completed." : "You’re signed in."}</h1><p>${message}</p>${completionCode ? `<a style="display:inline-block;background:#2b2d42;color:#edf2f4;padding:14px 22px;border-radius:16px;text-decoration:none" href="rankwisp://auth/complete#ticket=${handoff.handoff_ticket}&amp;code=${completionCode}">Return to Rankwisp</a><p style="font-size:14px">Open the installed Rankwisp app. Do not copy or share this sign-in link.</p>` : ""}</body></html>`,
-        { headers },
-      );
-    }
-    if (failure) {
-      headers.set(
-        "Location",
-        env.PUBLIC_ORIGIN + saved.return_to + "?authError=" + failure,
-      );
-      return new Response(null, { status: 303, headers });
-    }
-    headers.append(
-      "Set-Cookie",
-      sessionCookie(await makeSession(env, user.id), secure),
-    );
-    headers.set("Location", env.PUBLIC_ORIGIN + saved.return_to);
-    return new Response(null, { status: 303, headers });
+    return finishAuth(env, provider, saved, user, failure);
   }
+
   if (path === "/api/auth/logout" && request.method === "POST") {
     const user = await sessionUser(request, env);
     if (user)
@@ -510,4 +627,84 @@ export async function authRoute(request, env) {
   )
     throw fail("GOOGLE_SIGN_IN_REQUIRED", 403);
   return null;
+}
+
+async function finishAuth(env, provider, saved, user, failure) {
+  const apple = provider === "apple";
+  const prefix = provider.toUpperCase();
+  const nativeTable = apple ? "apple_native_auth" : "native_auth";
+  const secure = new URL(env.PUBLIC_ORIGIN).protocol === "https:";
+  const bindingCookie = (value, secure) =>
+    apple
+      ? `rankwisp_apple_oauth=${value}; Path=/api/auth/apple; HttpOnly; SameSite=None; Secure; Max-Age=600`
+      : binderCookie(value, secure);
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+    "Set-Cookie": bindingCookie("", secure).replace("Max-Age=600", "Max-Age=0"),
+  });
+  if (saved.native_ticket) {
+    const handoff = await env.IDENTITY.prepare(
+      `SELECT handoff_ticket FROM ${nativeTable} WHERE ticket_hash=? AND expires>?`,
+    )
+      .bind(saved.native_ticket, Date.now())
+      .first();
+    if (
+      !handoff?.handoff_ticket ||
+      !/^[A-Za-z0-9_-]{43}$/.test(handoff.handoff_ticket)
+    )
+      failure = prefix + "_AUTH_FAILED";
+    // Failure also needs a device-local return link: the app then displays the
+    // provider cancellation/linking error instead of waiting for its timeout.
+    const completionCode = /^[A-Za-z0-9_-]{43}$/.test(
+      handoff?.handoff_ticket || "",
+    )
+      ? randomToken()
+      : null;
+    await env.IDENTITY.prepare(
+      `UPDATE ${nativeTable} SET status=?,user_id=?,completion_hash=? WHERE ticket_hash=? AND expires>?`,
+    )
+      .bind(
+        failure
+          ? failure === prefix + "_CANCELLED"
+            ? "cancelled"
+            : failure === "ACCOUNT_LINK_REQUIRED"
+              ? "link_required"
+              : "failed"
+          : "complete",
+        user?.id || null,
+        completionCode ? hash(completionCode) : null,
+        saved.native_ticket,
+        Date.now(),
+      )
+      .run();
+    headers.set("Content-Type", "text/html; charset=utf-8");
+    const message =
+      failure === "ACCOUNT_LINK_REQUIRED"
+        ? "This email already uses another sign-in provider. Return to Rankwisp and use your original sign-in method."
+        : failure
+          ? "Return to Rankwisp to continue or try again."
+          : "Complete sign-in in the Rankwisp app on this device.";
+    headers.set(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+    );
+    return new Response(
+      `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Rankwisp sign-in</title><body style="background:#edf2f4;color:#2b2d42;font:18px system-ui;max-width:34rem;margin:18vh auto;padding:24px"><h1>${failure ? "Sign-in was not completed." : "You’re signed in."}</h1><p>${message}</p>${completionCode ? `<a style="display:inline-block;background:#2b2d42;color:#edf2f4;padding:14px 22px;border-radius:16px;text-decoration:none" href="rankwisp://auth/complete#ticket=${handoff.handoff_ticket}&amp;code=${completionCode}">Return to Rankwisp</a><p style="font-size:14px">Open the installed Rankwisp app. Do not copy or share this sign-in link.</p>` : ""}</body></html>`,
+      { headers },
+    );
+  }
+  if (failure) {
+    headers.set(
+      "Location",
+      env.PUBLIC_ORIGIN + saved.return_to + "?authError=" + failure,
+    );
+    return new Response(null, { status: 303, headers });
+  }
+  headers.append(
+    "Set-Cookie",
+    sessionCookie(await makeSession(env, user.id, provider), secure),
+  );
+  headers.set("Location", env.PUBLIC_ORIGIN + saved.return_to);
+  return new Response(null, { status: 303, headers });
 }

@@ -1,4 +1,4 @@
-import { beforeAll, afterEach, it, expect, vi } from "vitest";
+import { beforeAll, beforeEach, afterEach, it, expect, vi } from "vitest";
 import { env } from "cloudflare:workers";
 import {
   generateKeyPair,
@@ -11,8 +11,13 @@ import {
 import worker from "../index.mjs";
 import { verifyAppleIDToken } from "../apple-provider.mjs";
 import { randomToken, challengeFor } from "../auth.mjs";
+import { hash } from "../../server/db-core.mjs";
 const origin = "https://rankwisp.pages.dev";
 let appleEnv, appleKey, appleJwk, clientPublic;
+let testNetwork = 0;
+beforeEach(() => {
+  testNetwork += 1;
+});
 beforeAll(async () => {
   const client = await generateKeyPair("ES256", { extractable: true });
   clientPublic = client.publicKey;
@@ -37,7 +42,16 @@ beforeAll(async () => {
 });
 afterEach(() => vi.restoreAllMocks());
 const call = (path, options = {}, environment = appleEnv) =>
-  worker.fetch(new Request(origin + path, options), environment);
+  worker.fetch(
+    new Request(origin + path, {
+      ...options,
+      headers: {
+        "cf-connecting-ip": `192.0.2.${testNetwork}`,
+        ...options.headers,
+      },
+    }),
+    environment,
+  );
 async function begin(ticket) {
   const r = await call(
     "/api/auth/apple/start" + (ticket ? "?ticket=" + ticket : ""),
@@ -113,20 +127,25 @@ const callback = (
   values = {},
   cookie = start.cookie,
   requestOrigin = "https://appleid.apple.com",
+  environment = appleEnv,
 ) =>
-  call("/api/auth/apple/callback", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-      cookie,
-      origin: requestOrigin,
+  call(
+    "/api/auth/apple/callback",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie,
+        origin: requestOrigin,
+      },
+      body: new URLSearchParams({
+        state: start.state,
+        code: "apple-code",
+        ...values,
+      }),
     },
-    body: new URLSearchParams({
-      state: start.state,
-      code: "apple-code",
-      ...values,
-    }),
-  });
+    environment,
+  );
 it("Apple availability fails closed; authorization uses a separate POST binding and canonical callback", async () => {
   const disabled = await call(
     "/api/config",
@@ -306,7 +325,8 @@ it("Apple cancellation creates no account and matching Google email does not mer
     .run();
   await mockProvider(start.nonce, { email });
   r = await callback(start);
-  expect(r.headers.get("location")).toContain("ACCOUNT_LINK_REQUIRED");
+  expect(r.status).toBe(200);
+  expect(await r.text()).toContain("Confirm existing Google account");
   expect(r.headers.getSetCookie().some((c) => c.startsWith("rankwisp="))).toBe(
     false,
   );
@@ -347,6 +367,11 @@ it.each(["cancelled", "link_required"])(
       reason === "cancelled"
         ? { error: "user_cancelled_authorize" }
         : undefined,
+      start.cookie,
+      "https://appleid.apple.com",
+      reason === "link_required"
+        ? { ...appleEnv, GOOGLE_CLIENT_SECRET: "" }
+        : appleEnv,
     );
     const html = await response.text();
     const code = html.match(/&amp;code=([A-Za-z0-9_-]{43})/)[1];
@@ -373,3 +398,260 @@ it.each(["cancelled", "link_required"])(
     ).toBe(401);
   },
 );
+
+async function existingGoogle() {
+  const id = crypto.randomUUID(),
+    sub = crypto.randomUUID(),
+    session = randomToken();
+  const email = `link-${id}@example.test`;
+  await env.IDENTITY.prepare("INSERT INTO users VALUES(?,?,?,?,?)")
+    .bind(id, sub, email, Date.now(), "web")
+    .run();
+  await env.IDENTITY.prepare("INSERT INTO sessions VALUES(?,?,?,?)")
+    .bind(hash(session), id, Date.now(), Date.now() + 86400000)
+    .run();
+  await env.ACCOUNTS.getByName(id).initialize({
+    id,
+    email,
+    created: Date.now(),
+    platform: "web",
+  });
+  return { id, sub, email, session };
+}
+async function linkRequest(account, nativeTicket) {
+  const start = await begin(nativeTicket);
+  const sub = crypto.randomUUID();
+  await mockProvider(start.nonce, { email: account.email, sub });
+  const response = await callback(start);
+  const html = await response.text();
+  const request = html.match(/name="request" value="([A-Za-z0-9_-]{43})"/)[1];
+  const binding = response.headers
+    .getSetCookie()
+    .find((c) => c.startsWith("rankwisp_apple_link="))
+    .split(";")[0];
+  return { request, binding, sub, nonce: start.nonce };
+}
+const confirmLink = (link, session, extra = {}) =>
+  call("/api/auth/apple/link", {
+    method: "POST",
+    headers: {
+      origin,
+      "content-type": "application/x-www-form-urlencoded",
+      cookie: `${link.binding}; rankwisp=${session}`,
+      ...extra,
+    },
+    body: new URLSearchParams({ request: link.request, action: "link" }),
+  });
+
+it("linking requires bound browser, original recent Google session and explicit same-origin confirmation", async () => {
+  const account = await existingGoogle(),
+    other = await existingGoogle();
+  const link = await linkRequest(account);
+  expect((await confirmLink(link, "")).status).toBe(403);
+  expect((await confirmLink(link, other.session)).status).toBe(403);
+  expect(
+    (
+      await confirmLink(
+        { ...link, binding: "rankwisp_apple_link=" + randomToken() },
+        account.session,
+      )
+    ).status,
+  ).toBe(401);
+  expect(
+    (await confirmLink(link, account.session, { origin: "https://evil.test" }))
+      .status,
+  ).toBe(403);
+  await env.IDENTITY.prepare("UPDATE sessions SET created=? WHERE token_hash=?")
+    .bind(Date.now() - 660000, hash(account.session))
+    .run();
+  expect((await confirmLink(link, account.session)).status).toBe(403);
+  await env.IDENTITY.prepare("UPDATE sessions SET created=? WHERE token_hash=?")
+    .bind(Date.now(), hash(account.session))
+    .run();
+  expect(
+    await env.IDENTITY.prepare("SELECT * FROM apple_identities WHERE user_id=?")
+      .bind(account.id)
+      .first(),
+  ).toBeNull();
+  const stored = await env.IDENTITY.prepare(
+    "SELECT grant_token FROM apple_link_requests WHERE request_hash=?",
+  )
+    .bind(hash(link.request))
+    .first();
+  expect(stored.grant_token).not.toContain("private-refresh");
+  const result = await confirmLink(link, account.session);
+  expect(result.status).toBe(303);
+  const appleCookie = result.headers
+    .getSetCookie()
+    .find((c) => c.startsWith("rankwisp="))
+    .split(";")[0];
+  const me = await (
+    await call("/api/me", { headers: { cookie: appleCookie } })
+  ).json();
+  expect(me.authProvider).toBe("apple");
+  expect(me.account.id).toBe(account.id);
+  expect((await confirmLink(link, account.session)).status).toBe(401);
+  // Original Google session and account are preserved.
+  expect(
+    (
+      await (
+        await call("/api/me", {
+          headers: { cookie: "rankwisp=" + account.session },
+        })
+      ).json()
+    ).authProvider,
+  ).toBe("google");
+  // Deleting the linked Google-origin account must revoke its Apple grant too.
+  const deletion = await call("/api/account", {
+    method: "DELETE",
+    headers: {
+      origin,
+      "content-type": "application/json",
+      cookie: appleCookie,
+    },
+    body: JSON.stringify({ confirm: "DELETE" }),
+  });
+  expect(deletion.status).toBe(200);
+  expect(
+    await env.IDENTITY.prepare("SELECT * FROM apple_identities WHERE user_id=?")
+      .bind(account.id)
+      .first(),
+  ).toBeNull();
+});
+
+it("native Apple linking proves Google through OAuth, preserves account and returns through original device proof", async () => {
+  const account = await existingGoogle(),
+    verifier = randomToken();
+  const pending = await (
+    await call("/api/auth/apple/native/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        challenge: await challengeFor(verifier),
+        platform: "desktop",
+      }),
+    })
+  ).json();
+  const link = await linkRequest(account, pending.ticket);
+  const gs = await call("/api/auth/google/start?link=" + link.request, {
+    headers: { cookie: link.binding },
+  });
+  expect(gs.status).toBe(302);
+  const gu = new URL(gs.headers.get("location"));
+  const googleKeys = await generateKeyPair("RS256");
+  const gjwk = {
+    ...(await exportJWK(googleKeys.publicKey)),
+    alg: "RS256",
+    kid: "google-link-test",
+    use: "sig",
+  };
+  const gt = await new SignJWT({
+    email: account.email,
+    email_verified: true,
+    nonce: gu.searchParams.get("nonce"),
+  })
+    .setProtectedHeader({ alg: "RS256", kid: gjwk.kid })
+    .setIssuer("https://accounts.google.com")
+    .setAudience(appleEnv.GOOGLE_CLIENT_ID)
+    .setSubject(account.sub)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(googleKeys.privateKey);
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    if (String(input) === "https://www.googleapis.com/oauth2/v3/certs")
+      return Response.json({ keys: [gjwk] });
+    if (String(input) === "https://oauth2.googleapis.com/token")
+      return Response.json({ id_token: gt });
+    throw Error("Unexpected provider request");
+  });
+  const gr = await call(
+    "/api/auth/google/callback?state=" +
+      gu.searchParams.get("state") +
+      "&code=test",
+    {
+      headers: {
+        cookie:
+          gs.headers.get("set-cookie").split(";")[0] + "; " + link.binding,
+      },
+    },
+  );
+  expect(gr.status).toBe(303);
+  expect(gr.headers.get("location")).toBe(
+    origin + "/api/auth/apple/link?request=" + link.request,
+  );
+  const session = gr.headers
+    .getSetCookie()
+    .find((c) => c.startsWith("rankwisp="))
+    .split(";")[0]
+    .slice("rankwisp=".length);
+  const confirmPage = await call(
+    "/api/auth/apple/link?request=" + link.request,
+    { headers: { cookie: link.binding + "; rankwisp=" + session } },
+  );
+  expect(await confirmPage.text()).toContain("Link Apple and continue");
+  const done = await confirmLink(link, session);
+  const html = await done.text();
+  expect(html).toContain("You’re signed in.");
+  const completionCode = html.match(/&amp;code=([A-Za-z0-9_-]{43})/)[1];
+  const exchange = (body) =>
+    call("/api/auth/apple/native/exchange", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  expect((await exchange({ ticket: pending.ticket, verifier })).status).toBe(
+    202,
+  );
+  const native = await exchange({
+    ticket: pending.ticket,
+    verifier,
+    completionCode,
+  });
+  const { token: sessionToken } = await native.json();
+  const me = await (
+    await call("/api/me", {
+      headers: { authorization: "Bearer " + sessionToken },
+    })
+  ).json();
+  expect(me.account.id).toBe(account.id);
+  expect(me.authProvider).toBe("apple");
+  expect(
+    (await exchange({ ticket: pending.ticket, verifier, completionCode }))
+      .status,
+  ).toBe(401);
+  // Subsequent Apple login resolves the linked identity without an email merge.
+  vi.restoreAllMocks();
+  const again = await begin();
+  await mockProvider(again.nonce, { sub: link.sub, email: account.email });
+  const restored = await callback(again);
+  expect(restored.headers.get("location")).toBe(origin + "/app");
+});
+
+it("link requests expire and cancellation creates no identity", async () => {
+  const account = await existingGoogle();
+  let link = await linkRequest(account);
+  await env.IDENTITY.prepare(
+    "UPDATE apple_link_requests SET expires=0 WHERE request_hash=?",
+  )
+    .bind(hash(link.request))
+    .run();
+  expect((await confirmLink(link, account.session)).status).toBe(401);
+  vi.restoreAllMocks();
+  link = await linkRequest(account);
+  const r = await call("/api/auth/apple/link", {
+    method: "POST",
+    headers: {
+      origin,
+      cookie: link.binding,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ request: link.request, action: "cancel" }),
+  });
+  expect(r.headers.get("location")).toContain("APPLE_CANCELLED");
+  expect(
+    await env.IDENTITY.prepare("SELECT * FROM apple_identities WHERE user_id=?")
+      .bind(account.id)
+      .first(),
+  ).toBeNull();
+});

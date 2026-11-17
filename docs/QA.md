@@ -16,14 +16,28 @@ locked storage and logout racing an OS prompt; plaintext fallback is not allowed
 Apple sign-in is configured in production. With owner approval, the primary App ID,
 Services ID and dedicated key were created and the exact production callback registered.
 Both secrets are stored in Cloudflare; `/api/config` reports `appleConfigured:true`.
-The installed macOS app's Apple button opens Apple's real Rankwisp Web login page.
+The installed macOS app completed a real Apple login with Hide My Email, returned
+through the system browser, and showed "Signed in with Apple" in account settings.
+A full quit/reopen retained that session; Sign out returned to the login screen.
+A second real Apple login restored the same relay account and provider label.
+An earlier attempt displayed an Apple-hosted authorization error; a subsequent
+attempt succeeded. Its provider-side cause was not established.
 Signed-provider tests cover the form-post callback, independent browser state, token
 validation, private relay email, encrypted grant storage/revocation, native proof/replay,
-cancellation and refusing automatic email linking. Native failure callbacks include a device return link and preserve the specific cancellation/account-link error. Real Apple account login is still
-awaiting the user's personal Apple confirmation. iOS physical-device and Windows runtime
-checks remain open. After activation, all 26 Worker and 42 Node tests passed again and
+cancellation and refusing automatic email linking. Native failure callbacks include a device return link and preserve the specific cancellation/account-link error. iOS physical-device and Windows runtime
+checks remain open. After activation, all 29 Worker and 42 Node tests passed and
 the production build succeeded. The Apple test environment explicitly overrides the
 production redirect URI so fixture token exchanges cannot inherit the live callback.
+
+The live test also exposed an existing Google-email collision. An explicit linking
+flow now requires the Apple proof, a fresh Google session for the original account,
+a browser-bound expiring request and same-origin form confirmation. Existing account
+IDs, history and plans are preserved. Tests cover the full signed Google OAuth
+continuation, device proof, wrong/stale sessions, origin and browser binding, replay,
+expiry, cancellation, subsequent Apple login and grant revocation on deletion.
+This linking flow is deployed and fixture-tested; real linking of two personal
+accounts has not been completed. The successful live Apple test used a separate relay
+identity, not a merged Google account.
 
 Live authenticated onboarding exposed Apple's HTTP 429 response from the hosted provider
 coordinator. The application previously mapped it to 502, which Cloudflare replaced with
@@ -37,7 +51,8 @@ Apple's provider response; this is not recorded as a successful live measurement
 Validation: 42 Node tests, 26 workerd tests 13 browser tests, 8 marketing tests and 10 native-bridge tests passed. These include
 provider fixtures; the real Google flow above is separate evidence. Distribution remains
 an unsigned preview, not a notarized or commercially approved release. AI generation,
-purchases and the end-to-end personal Apple account confirmation are still pending.
+purchases remain disabled. Browser-only Apple login and real two-provider account
+linking have not been separately completed; the live Apple proof is the packaged Mac flow.
 
 The full dependency audit currently **fails** on the unpatched development dependency
 `picomatch` 4.0.7 ([GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf),

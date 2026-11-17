@@ -148,8 +148,7 @@ export default {
           if (Date.now() - user.authenticated_at > 600000)
             throw fail("REAUTH_REQUIRED", 403);
           if (body.confirm !== "DELETE") throw fail("CONFIRMATION_REQUIRED");
-          if (user.google_sub.startsWith("apple:"))
-            await revokeAppleGrant(env, user.id);
+          await revokeAppleGrant(env, user.id);
           // Revoke all sessions first: concurrent requests cannot revive the deleted identity.
           await env.IDENTITY.prepare("DELETE FROM sessions WHERE user_id=?")
             .bind(user.id)
@@ -166,9 +165,7 @@ export default {
           response = await env.ACCOUNTS.getByName(user.id).handle(request, {
             id: user.id,
             authenticated_at: user.authenticated_at,
-            authProvider: user.google_sub.startsWith("apple:")
-              ? "apple"
-              : "google",
+            authProvider: user.auth_provider,
             ip,
           });
       }
@@ -210,6 +207,9 @@ export default {
           ).bind(now),
           env.IDENTITY.prepare(
             "DELETE FROM apple_native_auth WHERE expires<?",
+          ).bind(now),
+          env.IDENTITY.prepare(
+            "DELETE FROM apple_link_requests WHERE expires<?",
           ).bind(now),
           env.IDENTITY.prepare("DELETE FROM edge_limits WHERE updated<?").bind(
             now - 86400000,

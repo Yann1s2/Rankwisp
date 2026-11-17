@@ -89,8 +89,9 @@ The web/native implementation and signed-provider tests are complete. Production
 identifiers and a dedicated Sign in with Apple key were registered with the owner's
 approval on 17 November 2026. The private key and grant-encryption key are stored as
 Cloudflare secrets, outside source control. `/api/config` returns `appleConfigured:true`.
-The packaged macOS app opens Apple's real authorization page for Rankwisp Web;
-personal account confirmation and the resulting session are still being verified.
+The packaged macOS app completed a real Hide My Email login, native return, full
+quit/reopen session restoration, logout and a second successful login. Browser-only and real account-linking
+flows remain separate manual checks; signed-provider tests cover both.
 
 Configure in Apple Developer → Certificates, Identifiers & Profiles:
 
@@ -106,6 +107,8 @@ Configure in Apple Developer → Certificates, Identifiers & Profiles:
    Keep the latter stable: it encrypts existing revocable provider grants.
 5. Apply migration `0003_apple_auth.sql` before deploying. It adds separate state/native
    handoff/grant tables and preserves all existing accounts and histories.
+   Apply `0004_apple_account_linking.sql` as well: it adds explicit linked Apple
+   identities, expiring encrypted link requests and per-session provider metadata.
 6. Test real sign-in, cancellation, Hide My Email, logout, restart, native return and
    account-deletion revocation. Mock-provider tests do not substitute for this step.
 
@@ -116,8 +119,14 @@ cookie. Only that exact callback accepts Apple's Origin; general CORS is not wid
 The normal application session remains Secure/HttpOnly/SameSite=Lax.
 
 Apple subjects use a reserved `apple:` namespace in the legacy identity column. Accounts
-are never automatically merged by email. An email collision asks the user to use their
-original provider. Apple relay addresses are supported. Refresh grants are encrypted
+are never automatically merged by email. When an Apple login matches an existing
+Google email, the browser offers explicit linking: verify the original Google account
+within ten minutes, then confirm the link with a same-origin POST and a separate
+browser-bound one-use request. The pending Apple grant is encrypted and expires with
+that request. D1 atomically inserts the identity/grant and consumes the request; the
+existing account ID and workspace remain intact. Native completion still requires
+the original device proof. A linked Apple login records Apple as the session provider.
+Apple relay addresses are supported. Refresh grants are encrypted
 with AES-GCM and bound to the user ID; account deletion first revokes the Apple grant.
 The native flow uses the same device-bound PKCE/completion-code protections described
 below, with `/api/auth/apple/...` routes. Apple does not receive a provider PKCE parameter.
