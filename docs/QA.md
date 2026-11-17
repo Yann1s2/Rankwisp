@@ -101,12 +101,17 @@ kein Node-Zugriff im Renderer, keine Laufzeitfehler und kein Dokumentüberlauf. 
 Testprofil; persönliche App-Daten unberührt. Windows-ZIP gebaut, Name/Icon/Ressourcen
 aktualisiert; Windows-Laufzeittest weiterhin offen.
 
-Finaler iOS-Simulatorbuild **0.2.0 (2), iOS 15.4+** ad hoc signiert, installiert und
-visuell geprüft. Neue Loginoberfläche und Safe Areas korrekt; Live-Config wird geladen,
+Finaler iOS-Simulatorbuild **0.2.0 (2), iOS 15.4+** ad hoc signiert, auf einem
+eigenen iOS-18.6-Simulator installiert und visuell geprüft. Neue Loginoberfläche und Safe Areas korrekt; Live-Config wird geladen,
 kein Server-/Keychainfehler. Ein zunächst unsignierter Build lieferte Keychainfehler
 −34018; SDK-spezifische Simulator-Entitlements und Ad-hoc-Signing beheben ihn.
 Leerer Keychain liefert danach erwartungsgemäss −25300. URL-Scheme-Dispatch geprüft;
 unaufgeforderter Callback gewährt keine Sitzung. Screenshot `native-ios-login.png`.
+Die iOS-27-Simulatorlaufzeit blockierte Installation/Screenshots durch stark belastende
+Wallpaper-/Poster-Systemprozesse; der eigene Testsimulator wurde heruntergefahren.
+Der identische Build bestand danach den sichtbaren Start auf dem separat angelegten
+iOS-18.6-Simulator, der anschliessend ebenfalls beendet wurde. Fremde Simulatoren
+blieben unverändert.
 Die Simulator-Steuerung war im CUA-Werkzeug nicht verfügbar; echte native Touch-,
 Demo- und Keyboard-Flows wurden deshalb nicht als geprüft ausgegeben. Physische Geräte,
 VoiceOver, Geräte-Signierung, macOS-Notarisierung und Store-Review bleiben offen.
@@ -139,3 +144,19 @@ Offen vor kommerziellem Betrieb:
 Der private App-Store-Connect-Berichtdownload bleibt im erhaltenen Swift-Bestand;
 er wurde nicht als universelle Windows-/iOS-Funktion ausgegeben. Historische Belege
 in `IMPLEMENTATION.md` beziehen sich auf die Vorversion; dieser Prüfstand hat Vorrang.
+
+## Letzte Live-Prüfung dieser Revision
+
+Anwendungsstand `de246ca`: GitHub-CI für `main` und `development` erfolgreich.
+Native GitHub-Push-Deployments in Pages erfolgreich (Produktion `352cbce3`, Vorschau
+`0afd3553`). Production-Worker `85f298b7-e54c-46d2-93f6-0f523989e9e8`, Preview-Worker
+`f07d969c-9ddc-44a7-8c4d-c79f7ee2f20b` veröffentlicht. Der separate Worker-CI-Deploy
+ist mangels dauerhaftem CI-Token weiterhin absichtlich deaktiviert; die tatsächlichen
+Worker-Veröffentlichungen erfolgten mit der autorisierten lokalen Cloudflare-Anmeldung.
+
+Live unter `rank.zhstudio.ch` und `development.rankwisp.pages.dev` erneut geprüft:
+minimale Website und Demo, sichtbare GitHub-Links, korrektes Canonical, ausgelieferte
+MIT-Lizenz, bytegleiches neues Icon, keine Page-Errors und kein Dokumentüberlauf bei
+390×844. Health/Config 200; Vorschlagsroute ohne Sitzung mit gültigem Origin 401,
+ohne Origin 403. Google/KI-Verfügbarkeitsflags bleiben korrekt false. Screenshots
+`live-*` und `preview-*` dokumentieren die tatsächlichen HTTPS-Seiten.

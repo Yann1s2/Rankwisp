@@ -20,7 +20,8 @@ ignored. Resource IDs, service names and callback URLs are not authorization sec
 
 ## Publication review
 
-- Gitleaks scanned all five pre-publication commits: no secret findings.
+- Gitleaks scanned all five original commits and then all six commits including the
+  complete publication change: no secret findings.
 - Gitleaks scanned the current source tree: no secret findings.
 - Independent manual review checked tracked files, legacy seed/history, configuration
   and 21 screenshots: no private account/customer datasets or credentials found.
@@ -28,6 +29,8 @@ ignored. Resource IDs, service names and callback URLs are not authorization sec
   clearly labelled. Stale documentation claiming real seed observations was corrected.
 - Runtime dependency notices and their verbatim license texts are preserved; original
   generated brand sources and prompts remain available.
+- GitHub public visibility and MIT detection were verified without authentication.
+  GitHub private vulnerability reporting is enabled.
 - Pull-request quality checks have read-only permissions and no deployment secrets.
   Production deployment remains a separate trusted-branch workflow.
 
