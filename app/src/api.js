@@ -31,6 +31,14 @@ async function bounded(promise, ms, code) {
 const sessionReady = secureSession ? bounded(secureSession.getSession(), 5000, "SECURE_STORAGE_UNAVAILABLE")
   .then(value => { token = value || null; })
   .catch(() => { storageError = true; }) : Promise.resolve();
+export async function retrySecureSession() {
+  await sessionReady;
+  if (!secureSession || !storageError) return;
+  try {
+    token = (await bounded(secureSession.getSession(), 5000, "SECURE_STORAGE_UNAVAILABLE")) || null;
+    storageError = false;
+  } catch { throw fail("SECURE_STORAGE_UNAVAILABLE"); }
+}
 // Native production builds must supply the deployed HTTPS origin. Only Vite development
 // may use localhost; a release without a configured backend reports configuration failure.
 export const apiOrigin = import.meta.env.VITE_API_ORIGIN || (native ? (import.meta.env.DEV ? "http://127.0.0.1:4318" : "") : "");
@@ -106,7 +114,7 @@ let googlePending = false;
 export async function beginGoogleSignIn({ signal } = {}) {
   if (!native) {
     const url = new URL(endpoint("/auth/google/start"),window.location.origin);
-    url.searchParams.set("returnTo","/app");url.searchParams.set("platform","web");
+    url.searchParams.set("returnTo","/app/");url.searchParams.set("platform","web");
     window.location.assign(url.href);
     return new Promise(()=>{});
   }

@@ -39,6 +39,7 @@ import {
   Store,
   native,
   beginGoogleSignIn,
+  retrySecureSession,
 } from "./api";
 import { useLocale, errorText } from "./i18n";
 import {
@@ -339,6 +340,7 @@ export default function App() {
         onReady={load}
         notice={notice}
         onRetry={async () => {
+          await retrySecureSession();
           const next = await api("/config");
           setConfig(next);
           setNotice(null);
@@ -546,7 +548,7 @@ export default function App() {
               "A look around, with clearly fictional example data.",
               "Ein Rundgang mit ausdrücklich fiktiven Beispieldaten.",
             )}{" "}
-            <a href="/app">
+            <a href="/app/">
               {tr("Track your own app", "Eigene App beobachten")}{" "}
               <ArrowRight size={13} />
             </a>
@@ -1992,7 +1994,7 @@ function Auth({ onReady, config, notice, onRetry }) {
             </button>
           </div>
         )}
-        <a className="auth-demo" href="/app?demo=1">
+        <a className="auth-demo" href="/app/?demo=1">
           {tr("Take a look around first", "Zuerst einen Blick hineinwerfen")}{" "}
           <ArrowUpRight size={14} />
         </a>

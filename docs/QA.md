@@ -12,7 +12,7 @@ Dieser Bericht unterscheidet die laufende Infrastruktur von der kommerziellen Pr
 | Tatsächliche workerd-Umgebung | **17/17 bestanden**; D1/DO, signierter Mock-Google-Flow, Sitzungen, Tenant-Isolation, Alarme, Limits, Wiederherstellung |
 | Gebündelter Worker-Kaltstart | **Bestanden**; startet den echten Build ausserhalb der Vitest-Transformation |
 | Browser-End-to-End | **7/7 bestanden**; EN/DE, Konto/Import/Archiv/Export, Onboarding, Fehler, Tastatur, Layout, Accessibility |
-| Native Client-Anmeldung mit Bridge-Fixture | **2/2 bestanden**; Geräte-Completioncode + PKCE vor Tokenaustausch, sichere Speicherung, Abbruch/Listener-Cleanup; alte AbortSignal-Statics deaktiviert |
+| Native Client-Anmeldung mit Bridge-Fixture | **3/3 bestanden**; Geräte-Completioncode + PKCE vor Tokenaustausch, sichere Speicherung, Abbruch/Listener-Cleanup; Keychain-Retry, alte AbortSignal-Statics deaktiviert |
 | Echte Apple-Netzwerkintegration in workerd | **Bestanden**; öffentliche Suche/Lookup, Projekt, Alarmmessung und persistierte echte Position/HTTP-Provenienz |
 | Produktions-Webbuild | **Bestanden**, 12 statische EN/DE-Seiten plus gemeinsame App |
 | Abhängigkeitsaudit | **0 bekannte Schwachstellen** nach Updates; Stand dieser Prüfung |
@@ -71,17 +71,32 @@ strikte CSP, sicherer Sessionstore, exakte OAuth-/Callback-URLs, nur lokal gesta
 Ticket, einmalige Zustellung, Abmeldung des Listeners. Browseröffnung im Handoff-Test
 wurde ersetzt; es wurde kein echter Google-Login behauptet.
 
-Xcode-Simulatorbuild mit iOS-15.4-Minimum, SceneDelegate, Keychain, StoreKit und URL-
-Rückleitung erfolgreich. Finaler synchronisierter UI-Lauf und Paketprüfungen werden im
-Abschlussbericht ergänzt. Windows-Artefakt wird auf macOS gebaut; ein Windows-Laufzeittest
-ist damit nicht belegt. Geräte-Signierung, Notarisierung und Store-Review sind nicht erfolgt.
+Finale macOS-App **0.2.0** als tatsächlich gepackte `.app` gestartet: echte HTTPS-
+Konfiguration von `rank.zhstudio.ch`, korrekter Google-Verfügbarkeitszustand, Demo,
+kein Node-Zugriff im Renderer, keine Laufzeitfehler und kein Dokumentüberlauf. Separates
+Testprofil; persönliche App-Daten unberührt. Windows-ZIP gebaut, Name/Icon/Ressourcen
+aktualisiert; Windows-Laufzeittest weiterhin offen.
+
+Finaler iOS-Simulatorbuild **0.2.0 (2), iOS 15.4+** ad hoc signiert, installiert und
+visuell geprüft. Neue Loginoberfläche und Safe Areas korrekt; Live-Config wird geladen,
+kein Server-/Keychainfehler. Ein zunächst unsignierter Build lieferte Keychainfehler
+−34018; SDK-spezifische Simulator-Entitlements und Ad-hoc-Signing beheben ihn.
+Leerer Keychain liefert danach erwartungsgemäss −25300. URL-Scheme-Dispatch geprüft;
+unaufgeforderter Callback gewährt keine Sitzung. Screenshot `native-ios-login.png`.
+Die Simulator-Steuerung war im CUA-Werkzeug nicht verfügbar; echte native Touch-,
+Demo- und Keyboard-Flows wurden deshalb nicht als geprüft ausgegeben. Physische Geräte,
+VoiceOver, Geräte-Signierung, macOS-Notarisierung und Store-Review bleiben offen.
 
 ## Infrastruktur und offene Freigaben
 
 GitHub ist mit Cloudflare Pages nativ verbunden. Produktion und Vorschau haben eigene
 Workers/D1/DOs. Live health/config antworten 200, unauthentifizierte Arbeitsbereiche 401,
 fremde Origins 403. `rank.zhstudio.ch` wurde als Pages-Domain mit CNAME konfiguriert.
-GitHub-Actions- und Branch-Deploy-Ergebnisse werden nach dem letzten Push final geprüft.
+GitHub-Actions-Qualitätsprüfungen und native GitHub-Push-Deployments für `main` und
+`development` wurden erfolgreich durchlaufen. Live App-Routing, Google-Fehler-Rückleitung,
+Support-E-Mail, Canonical/hreflang und noindex auf beiden Umgebungen bestätigt.
+Cloudflare-HTML-Transformationen störten zunächst CSP/Hydration; `no-transform` behebt
+die beobachteten Fehler. `/app/` hat einen eigenen statischen SPA-Einstiegspunkt.
 
 Offen vor kommerziellem Betrieb:
 

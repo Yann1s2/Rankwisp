@@ -83,6 +83,19 @@ npm run pack:win
 npm run ios:sync
 ```
 
+Simulator bauen (lokale Ad-hoc-Signierung ist für Keychain erforderlich):
+
+```sh
+xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath ../../../work/production/ios-build \
+  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build
+```
+
+Entwicklungsartefakte unter `releases`: `Rankwisp-0.2.0-mac-arm64.zip`,
+`Rankwisp-0.2.0-win.zip`, `Rankwisp-0.2.0-ios-simulator.zip` und
+`Rankwisp-0.2.0-source.zip`. Frühere 0.1.0-Archive sind als Bestand erhalten.
+
 `build:native` verlangt eine explizite HTTPS-Adresse. Kein veröffentlichter Build fällt
 stillschweigend auf localhost zurück. Native Artefakte sind Entwicklungsbuilds;
 macOS-Signierung/Notarisierung, Windows-Laufzeitprüfung und echte iOS-Geräte-/Storetests

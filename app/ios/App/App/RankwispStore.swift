@@ -82,11 +82,17 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getSession(_ call: CAPPluginCall) {
+        #if DEBUG
+        NSLog("Rankwisp secure storage read started")
+        #endif
         var query = keychainQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
+        #if DEBUG
+        NSLog("Rankwisp secure storage read status: %d", status)
+        #endif
         if status == errSecItemNotFound { call.resolve(["token": ""]); return }
         guard status == errSecSuccess, let data = result as? Data,
               let token = String(data: data, encoding: .utf8) else {

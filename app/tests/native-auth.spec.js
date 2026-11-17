@@ -2,15 +2,16 @@ import {test,expect} from '@playwright/test';
 // Native shell CSP is tested in native-security; localhost test host has a web-only CSP.
 test.use({bypassCSP:true});
 const ticket='t'.repeat(43), code='c'.repeat(43), session='s'.repeat(43);
-async function mockNative(page) {
-  await page.addInitScript(()=>{
+async function mockNative(page, storageFailure=false) {
+  await page.addInitScript((storageFailure)=>{
     AbortSignal.timeout=undefined;AbortSignal.any=undefined;
-    window.authListeners=[];window.openedAuth=[];window.persistedSession=null;
-    window.rankwisp={platform:'darwin',getSession:async()=>null,setSession:async(value)=>{window.persistedSession=value;},openAuth:async(url)=>{window.openedAuth.push(url);},onAuthCompleted:(listener)=>{window.authListeners.push(listener);return()=>{window.authListeners=window.authListeners.filter(x=>x!==listener);};}};
-  });
+    window.fixtureSessionFailure=storageFailure;window.fixtureSessionValue=null;window.authListeners=[];window.openedAuth=[];window.persistedSession=null;
+    window.rankwisp={platform:'darwin',getSession:async()=>{if(window.fixtureSessionFailure)throw Error("LOCKED");return window.fixtureSessionValue;},setSession:async(value)=>{window.persistedSession=value;},openAuth:async(url)=>{window.openedAuth.push(url);},onAuthCompleted:(listener)=>{window.authListeners.push(listener);return()=>{window.authListeners=window.authListeners.filter(x=>x!==listener);};}};
+  },storageFailure);
   const calls=[];let authenticated=false;
   await page.route('**/api/**',async route=>{
     const path=new URL(route.request().url()).pathname;
+    if(route.request().headers().authorization==='Bearer '+session) authenticated=true;
     if(path.endsWith('/config')) return route.fulfill({json:{authProvider:'google',googleConfigured:true}});
     if(path.endsWith('/native/start')) {calls.push({path,body:route.request().postDataJSON()});return route.fulfill({json:{ticket,url:new URL(route.request().url()).origin+'/api/auth/google/start?ticket='+ticket,expiresIn:600}});}
     if(path.endsWith('/native/exchange')) {calls.push({path,body:route.request().postDataJSON()});authenticated=true;return route.fulfill({json:{token:session}});}
@@ -47,3 +48,11 @@ test('native login cancellation removes callback listener without exchanging a s
   expect(await page.evaluate(()=>window.persistedSession)).toBe(null);
   await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
 });
+
+ test('native secure-storage retry recovers a temporarily unavailable keychain',async({page})=>{
+  await mockNative(page,true);
+  await expect(page.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
+  await page.evaluate(value=>{window.fixtureSessionFailure=false;window.fixtureSessionValue=value;},session);
+  await page.getByRole('button',{name:'Try again',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Meet your next chapter.'})).toBeVisible();
+ });

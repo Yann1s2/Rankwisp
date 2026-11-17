@@ -54,7 +54,7 @@ for (const locale of ["en", "de"])
       );
     mkdirSync("dist" + path, { recursive: true });
     writeFileSync("dist" + path + "/index.html", html);
-    if (locale === "en" && page === "home")
+    if (locale === "en" && page === "home" && !apiOrigin)
       writeFileSync("dist/index.html", html);
     routes.push(path);
   }

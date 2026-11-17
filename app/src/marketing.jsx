@@ -66,10 +66,10 @@ function MarketingBody({ page }) {
             <Globe size={14} />
             {locale.toUpperCase()}
           </a>
-          <a className="site-login" href="/app">
+          <a className="site-login" href="/app/">
             {tr("Sign in", "Anmelden")}
           </a>
-          <a className="button" href="/app">
+          <a className="button" href="/app/">
             {tr("Explore Rankwisp", "Rankwisp entdecken")}{" "}
             <ArrowUpRight size={14} />
           </a>
@@ -115,14 +115,14 @@ function MarketingBody({ page }) {
                 )}
               </p>
               <div className="hero-actions">
-                <a className="button large" href="/app">
+                <a className="button large" href="/app/">
                   {tr(
                     "Find your app’s next move",
                     "Finde den nächsten Schritt",
                   )}{" "}
                   <ArrowUpRight size={18} />
                 </a>
-                <a className="button ghost large" href="/app?demo=1">
+                <a className="button ghost large" href="/app/?demo=1">
                   {tr("Take a look inside", "Schau hinein")}{" "}
                   <ArrowRight size={16} />
                 </a>
@@ -162,7 +162,7 @@ function MarketingBody({ page }) {
                       "Fiktive Beispieldaten. Echte Oberfläche.",
                     )}
                   </span>
-                  <a href="/app?demo=1">
+                  <a href="/app/?demo=1">
                     {tr(
                       "Explore the interactive preview",
                       "Interaktive Vorschau öffnen",
@@ -469,7 +469,7 @@ function MarketingBody({ page }) {
                     </li>
                   ))}
                 </ul>
-                <a href="/app" className="button">
+                <a href="/app/" className="button">
                   {tr(
                     "Explore the preview",
                     "Vorschau entdecken",
@@ -562,7 +562,7 @@ function MarketingBody({ page }) {
                   "Dein nächster guter Schritt beginnt mit einem klaren Blick.",
                 )}
               </h2>
-              <a href="/app" className="button light large">
+              <a href="/app/" className="button light large">
                 {tr("Meet Rankwisp", "Rankwisp kennenlernen")}{" "}
                 <ArrowUpRight size={18} />
               </a>
@@ -850,7 +850,7 @@ function InfoPage({ page }) {
               </article>
             ))}
           </div>
-          <a href="/app?demo=1" className="button">
+          <a href="/app/?demo=1" className="button">
             {tr("Open the browser preview", "Browser-Vorschau öffnen")}{" "}
             <ArrowUpRight size={16} />
           </a>
