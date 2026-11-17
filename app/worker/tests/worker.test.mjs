@@ -135,14 +135,15 @@ describe("Workers + real local D1 and account Durable Objects", () => {
         })
       ).status,
     ).toBe(401);
+    const completionCode = randomToken();
     await env.IDENTITY.prepare(
-      "UPDATE native_auth SET status='complete',user_id=? WHERE ticket_hash=?",
+      "UPDATE native_auth SET status='complete',user_id=?,completion_hash=? WHERE ticket_hash=?",
     )
-      .bind(a.id, hash(ticket))
+      .bind(a.id, hash(completionCode), hash(ticket))
       .run();
     const success = await call("/api/auth/google/native/exchange", {
       method: "POST",
-      body: { ticket, verifier },
+      body: { ticket, verifier, completionCode },
     });
     const data = await success.json();
     expect(data.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -584,4 +585,96 @@ it("OAuth aliases canonicalize before setting browser-binding cookie or state", 
   expect(native.headers.get("location")).toBe(
     canonical + "/api/auth/google/start?ticket=" + ticket,
   );
+});
+
+it("a shared native login link cannot grant the polling initiator a session without local app completion secret", async () => {
+  const verifier = randomToken();
+  const begin = await (
+    await call("/api/auth/google/native/start", {
+      method: "POST",
+      body: { challenge: await challengeFor(verifier), platform: "desktop" },
+    })
+  ).json();
+  const start = await call("/api/auth/google/start?ticket=" + begin.ticket);
+  const destination = new URL(start.headers.get("location"));
+  const nonce = destination.searchParams.get("nonce"),
+    state = destination.searchParams.get("state"),
+    cookie = start.headers.get("set-cookie").split(";")[0];
+  const { privateKey, publicKey } = await generateKeyPair("RS256");
+  const jwk = {
+    ...(await exportJWK(publicKey)),
+    kid: "native-test",
+    use: "sig",
+    alg: "RS256",
+  };
+  const token = await new SignJWT({
+    email: "native-" + crypto.randomUUID() + "@example.test",
+    email_verified: true,
+    nonce,
+  })
+    .setProtectedHeader({ alg: "RS256", kid: "native-test" })
+    .setIssuer("https://accounts.google.com")
+    .setAudience(env.GOOGLE_CLIENT_ID)
+    .setSubject(crypto.randomUUID())
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey);
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    if (String(input) === "https://oauth2.googleapis.com/token")
+      return Response.json({ id_token: token });
+    if (String(input) === "https://www.googleapis.com/oauth2/v3/certs")
+      return Response.json({ keys: [jwk] });
+    throw Error("Unexpected network");
+  });
+  const callback = await call(
+    "/api/auth/google/callback?state=" + state + "&code=test",
+    { headers: { cookie } },
+  );
+  expect(callback.status).toBe(200);
+  const html = await callback.text();
+  const href = html
+    .match(/href="(rankwisp:\/\/auth\/complete#[^"]+)"/)?.[1]
+    .replace("&amp;", "&");
+  expect(href).toBeTruthy();
+  const fragment = new URLSearchParams(new URL(href).hash.slice(1));
+  const completionCode = fragment.get("code");
+  expect(fragment.get("ticket")).toBe(begin.ticket);
+  expect(completionCode).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  const pending = await call("/api/auth/google/native/exchange", {
+    method: "POST",
+    body: { ticket: begin.ticket, verifier },
+  });
+  expect(pending.status).toBe(202);
+  expect(await pending.json()).toEqual({ status: "pending" });
+  const wrong = await call("/api/auth/google/native/exchange", {
+    method: "POST",
+    body: { ticket: begin.ticket, verifier, completionCode: randomToken() },
+  });
+  expect(wrong.status).toBe(401);
+  const row = await env.IDENTITY.prepare(
+    "SELECT * FROM native_auth WHERE ticket_hash=?",
+  )
+    .bind(hash(begin.ticket))
+    .first();
+  expect(row.completion_hash).toBe(hash(completionCode));
+  expect(JSON.stringify(row).includes(completionCode)).toBe(false);
+  const wrongDevice = await call("/api/auth/google/native/exchange", {
+    method: "POST",
+    body: { ticket: begin.ticket, verifier: randomToken(), completionCode },
+  });
+  expect(wrongDevice.status).toBe(401);
+  const completed = await call("/api/auth/google/native/exchange", {
+    method: "POST",
+    body: { ticket: begin.ticket, verifier, completionCode },
+  });
+  expect(completed.status).toBe(200);
+  expect((await completed.json()).token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  expect(
+    (
+      await call("/api/auth/google/native/exchange", {
+        method: "POST",
+        body: { ticket: begin.ticket, verifier, completionCode },
+      })
+    ).status,
+  ).toBe(401);
 });

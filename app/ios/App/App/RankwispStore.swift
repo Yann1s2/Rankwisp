@@ -23,8 +23,32 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
     private let productID = "ch.zhstudio.rankwisp.lifetime"
     private let trialID = "ch.zhstudio.rankwisp.trial24"
     private var transactionTask: Task<Void, Never>?
+    private var authObserver: NSObjectProtocol?
+    private var pendingAuth: [String: Date] = [:]
+
+    static let authCompletionNotification = Notification.Name("RankwispAuthCompletion")
+
+    static func receiveAuth(_ url: URL) -> Bool {
+        guard url.absoluteString.utf8.count <= 512, url.scheme == "rankwisp", url.host == "auth",
+              url.path == "/complete", url.port == nil, url.user == nil, url.password == nil,
+              url.query == nil, let fragment = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedFragment,
+              let parts = URLComponents(string: "https://callback.invalid/?" + fragment),
+              let items = parts.queryItems, items.count == 2,
+              let ticket = items.first(where: { $0.name == "ticket" })?.value,
+              let code = items.first(where: { $0.name == "code" })?.value,
+              ticket.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil,
+              code.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil else { return false }
+        NotificationCenter.default.post(name: authCompletionNotification, object: nil, userInfo: ["ticket": ticket, "code": code])
+        return true
+    }
 
     public override func load() {
+        authObserver = NotificationCenter.default.addObserver(forName: Self.authCompletionNotification, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let ticket = notification.userInfo?["ticket"] as? String,
+                  let code = notification.userInfo?["code"] as? String,
+                  let expiry = self.pendingAuth.removeValue(forKey: ticket), expiry > Date() else { return }
+            self.notifyListeners("authCompleted", data: ["ticket": ticket, "code": code], retainUntilConsumed: true)
+        }
         transactionTask = Task { [weak self] in
             for await result in Transaction.updates {
                 if Task.isCancelled { return }
@@ -38,7 +62,10 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    deinit { transactionTask?.cancel() }
+    deinit {
+        transactionTask?.cancel()
+        if let authObserver { NotificationCenter.default.removeObserver(authObserver) }
+    }
 
     private func supported(_ transaction: Transaction) -> Bool {
         [productID, trialID].contains(transaction.productID)
@@ -117,8 +144,14 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
         guard google || ticket else { call.reject("INVALID_AUTH_URL"); return }
         // Open the backend ticket first so its HttpOnly browser binding is set before Google redirects.
         DispatchQueue.main.async {
+            self.pendingAuth = self.pendingAuth.filter { $0.value > Date() }
+            let ticketValue = ticket ? items[0].value : nil
+            if let ticketValue { self.pendingAuth[ticketValue] = Date().addingTimeInterval(600) }
             UIApplication.shared.open(url, options: [:]) { opened in
-                if opened { call.resolve() } else { call.reject("AUTH_BROWSER_UNAVAILABLE") }
+                if opened { call.resolve() } else {
+                    if let ticketValue { self.pendingAuth.removeValue(forKey: ticketValue) }
+                    call.reject("AUTH_BROWSER_UNAVAILABLE")
+                }
             }
         }
     }

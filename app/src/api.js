@@ -116,16 +116,40 @@ export async function beginGoogleSignIn({ signal } = {}) {
     const verifier=base64url(crypto.getRandomValues(new Uint8Array(32)));
     const challenge=base64url(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
     const {url,ticket,expiresIn}=await request("/auth/google/native/start",{challenge,platform:ios?"ios":"desktop"},undefined,signal);
-    if (window.rankwisp) await window.rankwisp.openAuth(url);
-    else await Store.openAuth({url});
-    const expires=Date.now()+Math.min(expiresIn||600,600)*1000;
-    while(Date.now()<expires) {
-      await delay(1500,signal);
-      const result=await request("/auth/google/native/exchange",{ticket,verifier},undefined,signal);
-      if(result.token) return result;
-      if(result.status!=="pending") throw fail("GOOGLE_AUTH_FAILED");
+    // The browser delivers a second secret through this device's URL handler.
+    // Polling with the public ticket and original verifier alone cannot obtain a
+    // session, even if someone forwards the sign-in link to another device.
+    let cleanupListener = () => {};
+    let completionTimer;
+    let cancelCompletion;
+    let resolveCompletion;
+    let rejectCompletion;
+    const completion = new Promise((resolve, reject) => { resolveCompletion=resolve; rejectCompletion=reject; });
+    completion.catch(() => {});
+    const onComplete = (result) => {
+      if (result?.ticket === ticket && /^[A-Za-z0-9_-]{43}$/.test(result.code || "")) resolveCompletion(result.code);
+    };
+    try {
+      if (window.rankwisp) cleanupListener = window.rankwisp.onAuthCompleted(onComplete);
+      else {
+        const listener = await Store.addListener("authCompleted", onComplete);
+        cleanupListener = () => listener.remove();
+      }
+      cancelCompletion = () => rejectCompletion(fail("REQUEST_CANCELLED"));
+      if(signal?.aborted) throw fail("REQUEST_CANCELLED");
+      signal?.addEventListener("abort",cancelCompletion,{once:true});
+      completionTimer=setTimeout(()=>rejectCompletion(fail("GOOGLE_EXPIRED")),Math.min(expiresIn||600,600)*1000);
+      if (window.rankwisp) await window.rankwisp.openAuth(url);
+      else await Store.openAuth({url});
+      const completionCode = await completion;
+      const result = await request("/auth/google/native/exchange",{ticket,verifier,completionCode},undefined,signal);
+      if (!result.token) throw fail("GOOGLE_AUTH_FAILED");
+      return result;
+    } finally {
+      clearTimeout(completionTimer);
+      signal?.removeEventListener("abort",cancelCompletion);
+      await cleanupListener();
     }
-    throw fail("GOOGLE_EXPIRED");
   } finally { googlePending=false; }
 }
 export function clearToken() {

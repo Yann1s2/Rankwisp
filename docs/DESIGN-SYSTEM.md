@@ -42,6 +42,13 @@ Desktop 1440×800 after correction: body 800/800px, main 710/710px.
 Small phone 375×667 overview: body 667/667px, main 525/525px; no horizontal document overflow.
 390×844 keyword screen has no horizontal document overflow; management rows expose controls.
 Settings arrow-key navigation moved Preferences → Your data → Account correctly.
+Final automated layout sweep passed all six views at 375×667, 390×844, 844×390,
+768×1024 and 1440×800, including wheel attempts without document scrolling.
+A landscape comparison overflow was traced to absolutely positioned screen-reader text
+escaping its scroll container; the workspace now establishes its containing block.
+Axe WCAG A/AA checks passed with zero serious/critical findings for website, auth and
+overview with reduced motion enabled (avoiding transient entry-animation contrast readings).
+Marketing preview footnotes and platform text now use the readable muted token.
 
 Scrollable history and long lists remain scrollable intentionally. Layout reserves safe areas,
 uses visualViewport for keyboard resizing, keeps mobile navigation anchored, and respects

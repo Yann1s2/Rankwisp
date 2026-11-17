@@ -120,9 +120,15 @@ export async function googleRoute(request, env) {
       throw fail("INVALID_INPUT");
     const ticket = randomToken();
     await env.IDENTITY.prepare(
-      "INSERT INTO native_auth(ticket_hash,challenge,platform,expires) VALUES(?,?,?,?)",
+      "INSERT INTO native_auth(ticket_hash,challenge,platform,expires,handoff_ticket) VALUES(?,?,?,?,?)",
     )
-      .bind(hash(ticket), body.challenge, body.platform, Date.now() + 600000)
+      .bind(
+        hash(ticket),
+        body.challenge,
+        body.platform,
+        Date.now() + 600000,
+        ticket,
+      )
       .run();
     return json({
       url: env.PUBLIC_ORIGIN + "/api/auth/google/start?ticket=" + ticket,
@@ -134,7 +140,7 @@ export async function googleRoute(request, env) {
     path === "/api/auth/google/native/exchange" &&
     request.method === "POST"
   ) {
-    const { ticket, verifier } = await readJSON(request);
+    const { ticket, verifier, completionCode } = await readJSON(request);
     if (
       !/^[A-Za-z0-9_-]{43}$/.test(ticket) ||
       typeof verifier !== "string" ||
@@ -158,10 +164,19 @@ export async function googleRoute(request, env) {
         401,
       );
     }
-    const consumed = await env.IDENTITY.prepare(
-      "DELETE FROM native_auth WHERE ticket_hash=? AND challenge=? AND status='complete' RETURNING user_id",
+    // Polling is deliberately insufficient: the completion secret is delivered only
+    // to the browser's locally installed app through the custom-scheme fragment.
+    if (completionCode === undefined) return json({ status: "pending" }, 202);
+    if (
+      !/^[A-Za-z0-9_-]{43}$/.test(completionCode) ||
+      !row.completion_hash ||
+      hash(completionCode) !== row.completion_hash
     )
-      .bind(hash(ticket), challenge)
+      throw fail("AUTH_COMPLETION_INVALID", 401);
+    const consumed = await env.IDENTITY.prepare(
+      "DELETE FROM native_auth WHERE ticket_hash=? AND challenge=? AND completion_hash=? AND status='complete' RETURNING user_id",
+    )
+      .bind(hash(ticket), challenge, hash(completionCode))
       .first();
     if (!consumed) throw fail("AUTH_EXPIRED", 401);
     const user = await env.IDENTITY.prepare(
@@ -332,8 +347,19 @@ export async function googleRoute(request, env) {
       ),
     });
     if (saved.native_ticket) {
+      const handoff = await env.IDENTITY.prepare(
+        "SELECT handoff_ticket FROM native_auth WHERE ticket_hash=? AND expires>?",
+      )
+        .bind(saved.native_ticket, Date.now())
+        .first();
+      if (
+        !handoff?.handoff_ticket ||
+        !/^[A-Za-z0-9_-]{43}$/.test(handoff.handoff_ticket)
+      )
+        failure = "GOOGLE_AUTH_FAILED";
+      const completionCode = failure ? null : randomToken();
       await env.IDENTITY.prepare(
-        "UPDATE native_auth SET status=?,user_id=? WHERE ticket_hash=? AND expires>?",
+        "UPDATE native_auth SET status=?,user_id=?,completion_hash=? WHERE ticket_hash=? AND expires>?",
       )
         .bind(
           failure
@@ -342,6 +368,7 @@ export async function googleRoute(request, env) {
               : "failed"
             : "complete",
           user?.id || null,
+          completionCode ? hash(completionCode) : null,
           saved.native_ticket,
           Date.now(),
         )
@@ -352,7 +379,7 @@ export async function googleRoute(request, env) {
         "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
       );
       return new Response(
-        `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Rankwisp sign-in</title><body style="background:#fff8f0;color:#1e1e24;font:18px system-ui;max-width:34rem;margin:18vh auto;padding:24px"><h1>${failure ? "Sign-in was not completed." : "You’re signed in."}</h1><p>${failure ? "Return to Rankwisp and try again." : "Return to Rankwisp. You can close this window."}</p></body></html>`,
+        `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Rankwisp sign-in</title><body style="background:#fff8f0;color:#1e1e24;font:18px system-ui;max-width:34rem;margin:18vh auto;padding:24px"><h1>${failure ? "Sign-in was not completed." : "You’re signed in."}</h1><p>${failure ? "Return to Rankwisp and try again." : "Complete sign-in in the Rankwisp app on this device."}</p>${completionCode ? `<a style="display:inline-block;background:#111d4a;color:#fff8f0;padding:14px 22px;border-radius:16px;text-decoration:none" href="rankwisp://auth/complete#ticket=${handoff.handoff_ticket}&amp;code=${completionCode}">Return to Rankwisp</a><p style="font-size:14px">Open the installed Rankwisp app. Do not copy or share this sign-in link.</p>` : ""}</body></html>`,
         { headers },
       );
     }

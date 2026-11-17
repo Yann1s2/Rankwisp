@@ -28,6 +28,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) { forward(userActivity) }
 
     private func forward(_ context: UIOpenURLContext) {
+        if RankwispStorePlugin.receiveAuth(context.url) { return }
         _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: context.url, options: [
             .openInPlace: context.options.openInPlace,
             .sourceApplication: context.options.sourceApplication as Any,

@@ -30,6 +30,18 @@ function apiOrigin(config) {
   return null;
 }
 
+function authCompletion(raw) {
+  try {
+    if (typeof raw !== 'string' || raw.length > 512) return null;
+    const url = new URL(raw);
+    if (url.protocol !== 'rankwisp:' || url.hostname !== 'auth' || url.pathname !== '/complete' || url.port || url.username || url.password || url.search) return null;
+    const params = new URLSearchParams(url.hash.slice(1));
+    if ([...params].length !== 2 || !params.has('ticket') || !params.has('code')) return null;
+    const ticket = params.get('ticket'), code = params.get('code');
+    return /^[A-Za-z0-9_-]{43}$/.test(ticket) && /^[A-Za-z0-9_-]{43}$/.test(code) ? { ticket, code } : null;
+  } catch { return null; }
+}
+
 function policy(origin) {
   return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.mzstatic.com; font-src 'self'; connect-src 'self'${origin ? ' ' + origin : ''}; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`;
 }
@@ -56,4 +68,4 @@ function assetPath(root, rawURL) {
   return file;
 }
 
-module.exports = { appURL, googleAuthURL, apiOrigin, policy, assetPath };
+module.exports = { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion };

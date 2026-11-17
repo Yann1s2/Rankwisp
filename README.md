@@ -5,7 +5,7 @@ React-Oberfläche mit eigenständiger Wisp-Marke, englischer/deutscher Website u
 Cloudflare-Backend. Bestehende Rankblick-Installationen und persönliche Daten wurden
 nicht verändert oder automatisch hochgeladen.
 
-- Website/App: https://rankwisp.pages.dev · `/app?demo=1` zeigt ausdrücklich Beispieldaten.
+- Website/App: https://rank.zhstudio.ch · `/app?demo=1` zeigt ausdrücklich Beispieldaten.
 - Privates Repository: https://github.com/Yann1s2/Rankwisp
 - Support: **info@zhstudio.ch**
 - Aktueller Prüfstand und verbleibende Freigaben: [QA](docs/QA.md).
@@ -77,7 +77,7 @@ Nur synthetische Testdaten werden von automatisierten Tests erstellt.
 ```sh
 cd app
 node scripts/assets.mjs --native
-NATIVE_API_ORIGIN=https://rankwisp.pages.dev npm run build:native
+NATIVE_API_ORIGIN=https://rank.zhstudio.ch npm run build:native
 npm run pack:mac
 npm run pack:win
 npm run ios:sync

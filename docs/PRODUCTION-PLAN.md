@@ -34,7 +34,8 @@ bounded requests, actionable errors and retry. Restarting localhost alone is ins
 
 GitHub API authenticates as Yann1s2 (account ID unchanged from previous username).
 Cloudflare OAuth permits Pages/Workers/D1 deployments. DNS API rejects the existing
-credential (403); no DNS records have been changed. No Google OAuth credentials were
+credential (403); the authorized CNAME rank.zhstudio.ch was subsequently created through
+the logged-in dashboard and HTTPS verified. No Google OAuth credentials were
 available in this project's configuration or current environment. No provider secret
 is placed in frontend code or documentation.
 

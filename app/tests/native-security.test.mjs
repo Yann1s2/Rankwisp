@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const require = createRequire(import.meta.url);
-const { appURL, googleAuthURL, apiOrigin, policy, assetPath } = require('../desktop/security.cjs');
+const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion } = require('../desktop/security.cjs');
 
 test('native auth restricts external launch to exact Google OAuth endpoint', () => {
   assert.equal(googleAuthURL('https://accounts.google.com/o/oauth2/v2/auth?state=opaque'), 'https://accounts.google.com/o/oauth2/v2/auth?state=opaque');
@@ -44,4 +44,10 @@ test('native auth permits only an exact configured backend start ticket', () => 
   assert.throws(()=>googleAuthURL(start));
   for(const url of [start.replace('rankwisp.pages.dev','rankwisp.pages.dev.evil.test'),start+'&next=https://evil.test',start+'&ticket='+ticket,start.replace('/start','/callback'),start.replace(ticket,'short'),start+'#fragment',start.replace('https://','http://')]) assert.throws(()=>googleAuthURL(url,origin));
   assert.equal(googleAuthURL('http://127.0.0.1:4318/api/auth/google/start?ticket='+ticket,apiOrigin({apiOrigin:'http://127.0.0.1:4318',development:true})), 'http://127.0.0.1:4318/api/auth/google/start?ticket='+ticket);
+});
+
+test('native auth callback accepts only a complete fragment-bound code and ticket', () => {
+  const code='c'.repeat(43),ticket='t'.repeat(43),url=`rankwisp://auth/complete#code=${code}&ticket=${ticket}`;
+  assert.deepEqual(authCompletion(url),{ticket,code});
+  for(const value of [url.replace('auth/','auth.evil/'),url.replace('/complete','/other'),url.replace('rankwisp:','https:'),url.replace('auth/','user@auth/'),url.replace('auth/','auth:443/'),url.replace('#','?'),url.replace('#','?redirect=1#'),url+'&ticket='+ticket,url+'&extra=1',url.replace(code,'short'),url.replace(ticket,'')]) assert.equal(authCompletion(value),null);
 });

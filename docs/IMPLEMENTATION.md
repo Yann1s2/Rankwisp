@@ -1,3 +1,5 @@
+> Historischer Implementierungsstand der lokalen Vorversion. Aktuelle Architektur und Betrieb: [Cloudflare Backend](CLOUDFLARE-BACKEND.md), [Operations](OPERATIONS.md), [QA](QA.md).
+
 # Rankwisp — implementation ledger
 
 Date: 2026-11-17. Separate source copy; production Rankblick untouched.

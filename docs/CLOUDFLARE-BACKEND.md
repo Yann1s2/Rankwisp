@@ -60,8 +60,7 @@ Google Cloud project and a **Web application** OAuth client:
    Add test users while the consent screen is in Testing mode.
 2. Request only `openid email profile`. No offline access or Google API scopes are used.
 3. Set the exact authorized redirect URI to
-   `https://rankwisp.pages.dev/api/auth/google/callback` (replace the origin if the deployed
-   Pages address differs). No wildcard redirect URIs. The native apps deliberately use
+   `https://rank.zhstudio.ch/api/auth/google/callback` (the canonical production origin). No wildcard redirect URIs. The native apps deliberately use
    this same server callback through the system browser.
 4. If Google requests an authorized JavaScript origin, use the exact HTTPS Pages origin.
    This implementation uses the server authorization-code flow, not an embedded Google
@@ -106,11 +105,21 @@ Native:
 1. Client generates a random verifier and SHA-256 base64url challenge.
 2. `POST /api/auth/google/native/start` with `{challenge, platform:"ios"|"desktop"}`
    returns `{url,ticket,expiresIn:600}`. Open `url` in the system browser.
-3. Poll `POST /api/auth/google/native/exchange` with `{ticket,verifier}`. HTTP 202 means
-   pending; HTTP 200 contains `{token,account}`. A wrong verifier cannot consume a valid
-   ticket. Successful exchange consumes it once and issues a separate bearer session.
-4. Store the token in the native OS secure store. Cancellation/errors expire or terminate
-   the handoff; credentials are never returned in a custom URL scheme or browser URL.
+3. Poll `POST /api/auth/google/native/exchange` with `{ticket,verifier}` for cancellation
+   or pending status only. **Polling alone can never issue a session**, even after Google
+   succeeds. This prevents an initiator from sharing a login link with another person
+   and then polling to obtain that person's bearer token.
+4. The callback page offers `Return to Rankwisp`, opening
+   `rankwisp://auth/complete#ticket=...&code=...` on the browser's device. The random,
+   one-use completion code is delivered only in this fragment; only its hash is stored.
+   The native app accepts that exact route only for its own pending ticket.
+5. Exchange `{ticket,verifier,completionCode}`. Both the originating app's PKCE verifier
+   and the browser-local completion code are required. A wrong code or verifier does not
+   consume the ticket. HTTP 200 returns `{token,account}` and consumes the handoff once.
+6. Store the session token in the native OS secure store. Cancellation/expiry terminates
+   the handoff. Session/provider tokens are never placed in URLs; the custom-scheme
+   fragment contains only the one-use completion secret, which is insufficient without
+   the app-held verifier. Do not copy or share completion links.
 
 `POST /api/projects/:id/refresh` returns HTTP 202 with `{jobId,status,total,completed,errors}`.
 Poll `GET /api/jobs/:jobId` until completed. Jobs and remaining keyword inputs survive
@@ -153,7 +162,8 @@ npx wrangler deploy --config worker/wrangler.jsonc --dry-run
 ```
 
 The workerd suite uses actual local D1 and Durable Objects. It covers OAuth state/nonce/
-PKCE, a complete signed mocked-provider callback and session, replay/cancellation,
+PKCE, a complete signed mocked-provider callback and session, native shared-link phishing
+resistance, replay/cancellation,
 malicious origins, tenant isolation, import/recovery/export, expiry, durable six-keyword
 jobs, global reservation races, dispute ordering, account deletion and large Unicode
 storage round trips. Root release documentation records actual remote deployment results
@@ -174,9 +184,9 @@ The bundled `wrangler dev` smoke test starts real workerd with local D1 and veri
 it complements the Vitest suite, whose transformed module context did not catch that error.
 
 - Production: `https://rankwisp-api.yannis-66678.workers.dev`, version
-  `a0183342-dad7-4d7b-b85f-a6c8d7194ab2`.
+  `86de90cf-9f7f-4aea-8760-b1e9dd2cebc8`.
 - Preview: `https://rankwisp-api-preview.yannis-66678.workers.dev`, version
-  `4266bbe5-41fe-4410-9c3a-c3fcbe2ea814`.
+  `df3670bf-5ddf-46ac-9f7c-04de376422fb`.
 - Actual HTTPS health/config returned 200 in both; production rejects hostile and branch
   origins with 403, preview accepts the exact project branch pattern, unauthenticated
   workspace returns 401. Google/AI/payment availability correctly remains false.
@@ -186,7 +196,17 @@ it complements the Vitest suite, whose transformed module context did not catch 
   provenance. This test injects only a synthetic local identity/session, not Apple replies;
   it creates no production bypass or account. It does not test Google live credentials.
 
-Full production Google consent verification may require an owned custom domain with
-verifiable policy pages. Do not represent the shared `pages.dev` parent domain as owned;
-use the exact deployed redirect for testing and migrate the configured callback to the
-verified custom domain when completing Google branding/verification.
+Production uses the requested custom domain `rank.zhstudio.ch`. Configure Google consent
+branding/domain verification for `zhstudio.ch`, and use the exact redirect
+`https://rank.zhstudio.ch/api/auth/google/callback`. The Pages alias remains allowed for
+API requests but OAuth start redirects to the canonical custom host before setting its
+browser-binding cookie. Preview continues to use `development.rankwisp.pages.dev` with
+separate credentials. Do not represent the shared `pages.dev` parent domain as owned.
+
+### Canonical custom host
+
+The production Worker was redeployed with `PUBLIC_ORIGIN=https://rank.zhstudio.ch`.
+Both the custom origin and `https://rankwisp.pages.dev` are allowed API origins; the
+OAuth browser flow canonicalizes to the custom host before state/cookie creation.
+Actual `https://rank.zhstudio.ch/api/health` and `/de/` returned HTTP 200 after DNS/TLS
+activation. Preview remains isolated at `development.rankwisp.pages.dev`.

@@ -2,9 +2,26 @@ const { app, BrowserWindow, protocol, net, shell, session, safeStorage, ipcMain 
 const { join, resolve } = require('node:path');
 const { existsSync, readFileSync, writeFileSync, renameSync, rmSync } = require('node:fs');
 const { pathToFileURL } = require('node:url');
-const { appURL, googleAuthURL, apiOrigin, policy, assetPath } = require('./security.cjs');
+const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion } = require('./security.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'rankwisp', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+
+let mainWindow;
+const pendingAuth = new Map();
+function receiveAuth(raw) {
+  const value = authCompletion(raw);
+  if (!value || !pendingAuth.has(value.ticket)) return;
+  const expires = pendingAuth.get(value.ticket);
+  pendingAuth.delete(value.ticket);
+  if (expires < Date.now() || !mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show(); mainWindow.focus();
+  mainWindow.webContents.send('rankwisp:auth-completed', value);
+}
+app.on('open-url', (event, url) => { event.preventDefault(); receiveAuth(url); });
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) app.quit();
+app.on('second-instance', (_event, argv) => { for (const arg of argv) receiveAuth(arg); });
 
 async function external(raw) {
   try {
@@ -14,7 +31,10 @@ async function external(raw) {
   } catch { /* The renderer reports actionable checkout/auth errors separately. */ }
 }
 
-app.whenReady().then(() => {
+if (primaryInstance) app.whenReady().then(() => {
+  // Installed bundles register this scheme on macOS; Windows/Linux use the executable.
+  if (app.isPackaged) app.setAsDefaultProtocolClient('rankwisp');
+  else if (process.defaultApp && process.argv[1]) app.setAsDefaultProtocolClient('rankwisp', process.execPath, [resolve(process.argv[1])]);
   const root = resolve(__dirname, '../dist');
   let config = {};
   try { config = JSON.parse(readFileSync(join(root, 'native-config.json'), 'utf8')); } catch {}
@@ -47,7 +67,12 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('rankwisp:open-auth', async (event, value) => {
     trusted(event);
-    await shell.openExternal(googleAuthURL(value, configuredOrigin));
+    const target = googleAuthURL(value, configuredOrigin);
+    const ticket = new URL(target).searchParams.get('ticket');
+    for (const [key, expires] of pendingAuth) if (expires < Date.now()) pendingAuth.delete(key);
+    if (ticket) pendingAuth.set(ticket, Date.now() + 600000);
+    try { await shell.openExternal(target); }
+    catch (error) { if (ticket) pendingAuth.delete(ticket); throw error; }
   });
 
   protocol.handle('rankwisp', async (req) => {
@@ -70,6 +95,7 @@ app.whenReady().then(() => {
     title: 'Rankwisp', backgroundColor: '#FFF8F0', icon: join(root, 'icon.png'),
     webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false },
   });
+  mainWindow = win;
   win.webContents.setWindowOpenHandler(({ url }) => { void external(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (event, url) => {
     if (!appURL(url)) { event.preventDefault(); void external(url); }
