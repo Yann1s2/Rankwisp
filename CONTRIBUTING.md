@@ -1,6 +1,7 @@
 # Contributing
 
-Issues and pull requests are welcome. Describe the user-visible problem and include
+Issues and pull requests are welcome. Read the [code of conduct](CODE_OF_CONDUCT.md)
+and choose a focused task from the [roadmap](ROADMAP.md). Describe the user-visible problem and include
 reproduction steps, expected behavior and relevant test evidence. For vulnerabilities,
 follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 

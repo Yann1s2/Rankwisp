@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible problem in Rankwisp.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for testing Rankwisp. Never include API keys, passwords, private exports or account data. For security findings, use the private reporting link instead."
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.2.0 preview / commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where did it happen?
+      options: [Hosted demo, Local web app, macOS preview, Windows preview, iOS Simulator, Self-hosted Cloudflare, Other]
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and browser / runtime versions
+      placeholder: "macOS version, browser version, Node version if relevant"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open…\n2. Choose…\n3. Observe…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Optional screenshots or logs
+      description: "Redact personal information and secrets. Label demo or fixture data."

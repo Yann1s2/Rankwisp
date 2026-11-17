@@ -1,0 +1,27 @@
+name: Feature request
+description: Explain a problem and the improvement you would find useful.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: "Describe the user problem, not just a proposed UI element."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or current workaround
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Examples or evidence
+      description: "Use public or anonymized examples. Avoid unsupported ranking or revenue claims."

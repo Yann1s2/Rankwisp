@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/Yann1s2/Rankwisp/security/advisories/new
+    about: Please disclose vulnerabilities privately, not in public issues.
+  - name: First-run guide and troubleshooting
+    url: https://github.com/Yann1s2/Rankwisp/blob/main/docs/GETTING-STARTED.md
+    about: Setup, provider requirements and common problems.

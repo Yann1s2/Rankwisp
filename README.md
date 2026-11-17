@@ -1,122 +1,137 @@
-# Rankwisp
+<p align="center">
+  <img src="app/public/icon.png" width="80" height="80" alt="Rankwisp app icon">
+</p>
 
-App-Store-Recherche und Keyword-Verläufe für Web, macOS, Windows und iOS. Gemeinsame
-React-Oberfläche mit reduzierter Rankwisp-Marke, englischer/deutscher Website und
-Cloudflare-Backend. Bestehende Rankblick-Installationen und persönliche Daten wurden
-nicht verändert oder automatisch hochgeladen.
+<h1 align="center">Rankwisp</h1>
+<p align="center"><strong>Open-source App Store keyword research.</strong><br>Track search positions. Compare apps. Find your next useful keyword.</p>
 
-- Website/App: https://rank.zhstudio.ch · `/app?demo=1` zeigt ausdrücklich Beispieldaten.
-- Open Source (MIT): https://github.com/Yann1s2/Rankwisp
-- Support: **info@zhstudio.ch**
-- Aktueller Prüfstand und verbleibende Freigaben: [QA](docs/QA.md).
-- Betrieb und Deployment: [Operations](docs/OPERATIONS.md).
-- Google-Einrichtung und Architektur: [Backend](docs/CLOUDFLARE-BACKEND.md).
-- Gestaltung: [Designsystem](docs/DESIGN-SYSTEM.md).
+<p align="center">
+  <a href="https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml"><img src="https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml/badge.svg?branch=main" alt="Quality checks"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111D4A" alt="MIT license"></a>
+  <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.0-preview.1"><img src="https://img.shields.io/badge/release-0.2.0_preview-FFCF99?labelColor=1E1E24" alt="0.2.0 preview release"></a>
+</p>
 
-## Open Source
+<p align="center">
+  <a href="https://rank.zhstudio.ch/app/?demo=1"><img src="https://img.shields.io/badge/Open_live_demo-111D4A?style=for-the-badge" alt="Open live demo"></a>
+  <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.0-preview.1"><img src="https://img.shields.io/badge/Download_preview-92140C?style=for-the-badge" alt="Download preview"></a>
+</p>
+<p align="center"><a href="#quick-start">Run locally</a> · <a href="docs/GETTING-STARTED.md">Documentation</a> · <a href="CONTRIBUTING.md">Contribute</a> · <a href="README.de.md">Deutsch</a></p>
 
-Weboberfläche, native Clients, Backend, Tests und Deployment-Konfiguration sind unter
-der [MIT-Lizenz](LICENSE) offen verfügbar. Du kannst sie prüfen, verändern und selbst
-hosten. Beiträge: [CONTRIBUTING.md](CONTRIBUTING.md). Sicherheitsmeldungen und die
-Trennung von Quellcode und Secrets: [SECURITY.md](SECURITY.md). Abhängigkeiten behalten
-ihre [eigenen Lizenzen](THIRD_PARTY_NOTICES.md). Der gehostete Dienst und seine
-Anbieterkosten sind vom frei verfügbaren Quellcode getrennt.
+Rankwisp helps indie iOS developers explore **App Store optimization (ASO)** with inspectable data. Follow keyword positions across 20 storefronts, compare selected competitors and keep a history you can export. The web app, desktop clients and backend are all MIT-licensed.
 
-## Funktionen
+> **Public preview:** the interactive demo uses fictional data and needs no account. Hosted Google sign-in, AI generation and purchases are not enabled yet. For real research today, [run the local app](#quick-start); Apple search does not require an API key.
 
-App-Suche in 20 Ländern über Apples echte Search/Lookup API, dreistufiges Onboarding,
-begründete Konkurrenzvorschläge, Keyword-Gruppen/Archiv, dauerhafte Messaufträge,
-Verläufe mit Lücken/Fehlern/Quellenbelegen, Vergleichskurven und zugängliches Messprotokoll.
-Verlustfreier JSON-Import mit Vorschau, Konfliktschutz und Wiederherstellungskopien;
-Export bleibt auch nach Testphasenende erreichbar. Arbeitsbereiche sind auf 16 MiB
-kompaktes JSON begrenzt; Überschreitungen werden ohne Datenverlust abgewiesen.
+[![Rankwisp dashboard showing keyword positions, visibility history and next steps with clearly labelled demo data](screenshots/live-demo-desktop.png)](https://rank.zhstudio.ch/app/?demo=1)
+<p align="center"><sub>Actual application screenshot · illustrative demo data · <a href="https://rank.zhstudio.ch/app/?demo=1">explore it yourself</a></sub></p>
 
-Google OIDC mit PKCE, State, Nonce und signierten Tokenprüfungen ist implementiert.
-Websessions sind HttpOnly; native Sessions liegen in Keychain bzw. OS-safeStorage.
-**Echte Google-Anmeldungen benötigen noch die OAuth-Client-ID und das Client-Secret.**
-Bis dahin nennt die Oberfläche die fehlende Verfügbarkeit ausdrücklich; eine Demo ist
-kein echtes Konto. Der lokale Node-Server unterstützt weiterhin seine bisherigen
-E-Mail-Konten; Produktionskonten nutzen Google. Datenmigration erfolgt bewusst per
-Export/Import, nicht durch Übernahme unbestätigter E-Mail-Adressen.
+## A small workspace for a clearer next move
 
-Optionale KI mit Luna, Einwilligung und Kostenbudgets. Keyword-Vorschläge nutzen die
-öffentlichen App-Angaben und das gewählte Store-Land. Vorschläge sind einzeln auswählbar
-und editierbar; erst bestätigte Entwürfe werden gespeichert, ohne erfundene Messwerte.
-Ein neuer OpenAI-Key und ein echter Modelltest sind noch erforderlich. Stripe-Einmalkauf
-und verifizierte StoreKit-Integration sind vorbereitet. Ohne Anbieter-/Händlerkonfiguration sind diese
-Dienste deaktiviert. 24 Tage Testphase, keine automatische Belastung. CHF 49 ist weiterhin
-der Preisvorschlag; Betreiberangaben und Rechtsfreigabe sind offen. Website bleibt noindex.
-Private App-Store-Connect-Berichte bleiben im erhaltenen Swift-Bestand `legacy` und sind
-noch nicht in den gemeinsamen Client portiert.
+- **Follow keywords over time.** See observed search positions, missing results and failed requests without filling gaps with invented data.
+- **Compare apps with context.** Choose your own competitors, review suggestions and inspect the observations behind each comparison.
+- **Keep control of AI ideas.** Optional Luna keyword proposals can be edited and selected before saving. Generation requires your own configured provider key and explicit consent.
+- **Keep your history.** Import and export JSON, archive keywords without deleting observations, and recover from an import.
+- **Use a focused interface.** English and German UI, keyboard navigation, compact mobile layouts and reduced-motion support.
+- **Inspect or self-host the whole stack.** React, Electron and Capacitor clients; Cloudflare Workers/D1/Durable Objects backend; local Node/SQLite alternative.
 
-## Architektur
+<table>
+  <tr>
+    <td align="center"><strong>A workspace that fits your phone</strong></td>
+    <td align="center"><strong>Keyword ideas you can change</strong></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/live-demo-mobile.png" width="260" alt="Rankwisp mobile overview with a compact chart and bottom navigation"></td>
+    <td align="center"><img src="screenshots/keyword-suggestions-mobile.png" width="300" alt="Editable keyword suggestions with individual selection and an explicit Use selected button"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Live demo · fictional observations</sub></td>
+    <td align="center"><sub>UI test fixture · not a live AI result</sub></td>
+  </tr>
+</table>
 
-| Pfad | Verantwortung |
+## Try it or download a preview
+
+**The fastest start is the [browser demo](https://rank.zhstudio.ch/app/?demo=1).** No installation, account or card required.
+
+| Platform | Download | What to expect |
+| --- | --- | --- |
+| macOS · Apple Silicon | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-mac-arm64.zip) | Packaged app tested on macOS; not Developer-ID signed or notarized |
+| Windows · x64 | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-win.zip) | Portable preview; unsigned and not yet runtime-tested on Windows |
+| iOS Simulator | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-ios-simulator.zip) | Ad-hoc signed simulator app, verified on iOS 18.6; not an iPhone installer |
+| Source code | [Download ZIP](https://github.com/Yann1s2/Rankwisp/archive/refs/tags/v0.2.0-preview.1.zip) | Build, inspect or modify under MIT |
+
+Native previews connect to the hosted backend, whose Google login is still unavailable. Use their demo to explore the UI, or use the local web setup below for real research. See [release notes and SHA-256 checksums](https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.0-preview.1) before installing. No Linux desktop binary or App Store release is offered yet.
+
+## Quick start
+
+Requires **Node.js 22.20+**, npm and Git. Run from a terminal:
+
+```sh
+git clone https://github.com/Yann1s2/Rankwisp.git
+cd Rankwisp/app
+npm ci
+npm run build
+npm run server
+```
+
+Open **[http://127.0.0.1:4318/app/](http://127.0.0.1:4318/app/)**. Choose **Continue with email**, then **New here? Start your free trial**. This creates a local account, not a hosted Google account. Find an app, choose a storefront, add keywords and press **Refresh** for the first observation. Nothing is backfilled.
+
+Local data lives in `app/.data/`, which is excluded from Git. Optional AI, Google OAuth and payments need separate server-side credentials. The default usage limits are described in the app; MIT licensing does not include free hosted services or provider credits.
+
+[First-run guide and troubleshooting →](docs/GETTING-STARTED.md)
+
+## What a “position” means
+
+Rankwisp records an app’s **one-based position in Apple’s public Search API response**. That order may differ from the App Store search shown on an iPhone. A missing result stays missing; a failed request stays an error. Search volume, downloads, revenue, difficulty and market share are not measured or fabricated. AI keyword ideas are hypotheses to review, not ranking guarantees.
+
+## Built in the open
+
+| Area | Current evidence |
 | --- | --- |
-| `app/src`, `app/public` | App, Website, Lokalisierung, Designsystem, abstraktes Markenzeichen/Icon |
-| `app/worker` | Workers, D1-Identitäten, SQLite Durable Objects, Google OIDC, Alarme |
-| `app/functions` | Same-origin Pages-API über Worker-Service-Binding |
-| `app/server`, `app/shared` | Gemeinsame Fachlogik, lokale Express/SQLite-Alternative, Datenvertrag |
-| `app/desktop` | Electron-Sandbox, CSP, sichere Sitzungsspeicherung |
-| `app/ios` | Capacitor/Xcode, StoreKit, Keychain, Export, Haptik; iOS 15.4+ |
-| `app/tests`, `app/worker/tests` | Node-, Browser- und echte workerd-Tests |
-| `.github/workflows` | CI und vorbereiteter separater Worker-Deploy-Workflow |
-| `releases`, `screenshots` | Lokal erzeugte Artefakte und visuelle Prüfbelege |
+| Automated checks | 35 Node, 19 workerd, 10 browser and 3 native-bridge tests passed at the 0.2.0 preview checkpoint; [current CI](https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml) is the source of truth |
+| Live deployment | GitHub → Cloudflare Pages, separate production/preview Workers and data stores |
+| Native verification | Packaged macOS runtime and iOS 18.6 simulator launch checked; Windows runtime remains open |
+| Provider integrations | Google OIDC and AI contracts tested with fixtures; real Google/AI credentials still required |
+| Security | Public source/history scanned for secrets; [private vulnerability reporting](https://github.com/Yann1s2/Rankwisp/security/advisories/new) enabled |
 
-## Lokal entwickeln und prüfen
+[Detailed QA and remaining release requirements](docs/QA.md) · [Security policy](SECURITY.md) · [Roadmap](ROADMAP.md)
 
-Node.js 22.20+ erforderlich. `Start-preview.command` startet weiterhin die lokale
-Node-Alternative auf Port 4318. Für den produktionsnahen Workers-Pfad:
+<details>
+<summary><strong>Architecture and development</strong></summary>
+
+```text
+React UI ── Web / Electron / Capacitor
+    │
+    ├── Cloudflare Pages → Workers → D1 + per-account Durable Objects
+    └── Local Node server → SQLite
+```
+
+| Path | Purpose |
+| --- | --- |
+| `app/src` | Shared application and English/German website |
+| `app/worker`, `app/functions` | Cloudflare API, Google auth, storage and Pages integration |
+| `app/server`, `app/shared` | Shared domain logic and local server |
+| `app/desktop`, `app/ios` | Native wrappers and secure storage bridges |
+| `legacy` | Preserved Swift client with an empty seed dataset |
 
 ```sh
 cd app
-npm ci
 npm test
 npm run test:worker
-node worker/scripts/startup-smoke.mjs
 npm run build:pages
 npx playwright install chromium
 npm run test:browser
-npm run worker:dev
 ```
 
-Workers-Entwicklung benötigt die lokale D1-Migration; Details im Backend-Dokument.
-Die Node-Alternative: `npm run build && npm run server`, App auf http://127.0.0.1:4318/app.
-Nur synthetische Testdaten werden von automatisierten Tests erstellt.
+Deployment needs your own Cloudflare resources and provider configuration. Never deploy the example production identifiers as if they belonged to your account. See [Cloudflare operations](docs/OPERATIONS.md), [backend/OAuth setup](docs/CLOUDFLARE-BACKEND.md) and [native build instructions](docs/GETTING-STARTED.md#native-builds).
 
-## Native Builds
+</details>
 
-```sh
-cd app
-node scripts/assets.mjs --native
-NATIVE_API_ORIGIN=https://rank.zhstudio.ch npm run build:native
-npm run pack:mac
-npm run pack:win
-npm run ios:sync
-```
+## Help shape Rankwisp
 
-Simulator bauen (lokale Ad-hoc-Signierung ist für Keychain erforderlich):
+Try a real storefront, report a reproducible bug, improve a translation or help test accessibility. [Contributing](CONTRIBUTING.md) explains how to start; the [roadmap](ROADMAP.md) lists useful next steps. No provider credentials are needed to run the automated tests.
 
-```sh
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
-  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath ../../../work/production/ios-build \
-  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build
-```
+If this is useful to you, **star the repository** to keep it on your radar. Feedback about your first run is just as welcome.
 
-Entwicklungsartefakte unter `releases`: `Rankwisp-0.2.0-mac-arm64.zip`,
-`Rankwisp-0.2.0-win.zip`, `Rankwisp-0.2.0-ios-simulator.zip` und
-`Rankwisp-0.2.0-source.zip`. Frühere 0.1.0-Archive sind als Bestand erhalten.
+Maintained by [Yannis Ress Lasser / ZhStudio](https://zhstudio.ch) · [info@zhstudio.ch](mailto:info@zhstudio.ch)
 
-`build:native` verlangt eine explizite HTTPS-Adresse. Kein veröffentlichter Build fällt
-stillschweigend auf localhost zurück. Native Artefakte sind Entwicklungsbuilds;
-macOS-Signierung/Notarisierung, Windows-Laufzeitprüfung und echte iOS-Geräte-/Storetests
-bleiben gesonderte Freigaben. Ein Simulator-Build ist kein App-Store-IPA.
-
-## Secrets
-
-Secrets nur im Cloudflare-Secret-Manager bzw. lokal in ignorierten `.dev.vars`/`.env`
-hinterlegen. Niemals `VITE_` für Secrets verwenden. Ein zuvor offengelegter API-Key
-wurde weder gesucht noch übernommen. Google, OpenAI und Händlercredentials werden
-nicht im Chat oder Repository gespeichert. Genaue Variablen und verbleibende Schritte
-stehen in den Betriebs- und Backend-Dokumenten.
+**[MIT license](LICENSE)** · Dependencies retain their [upstream licenses](THIRD_PARTY_NOTICES.md). Source availability does not include access to the hosted service’s accounts, credentials or infrastructure.
