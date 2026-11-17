@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState } from "react";
+import { SUPPORTED_LOCALES } from "../shared/locale.mjs";
 const Context = createContext(null);
 export function LocaleProvider({ children, initial }) {
   const [locale, set] = useState(initial || "en");
   const change = (value) => {
+    if (!SUPPORTED_LOCALES.includes(value)) return;
     set(value);
     document.documentElement.lang = value;
-    localStorage.setItem("rankwisp-language", value);
+    try { localStorage.setItem("rankwisp-language", value); } catch {}
   };
   const tr = (en, de) => (locale === "de" ? de : en);
   const date = (v, options = { day: "numeric", month: "short" }) =>

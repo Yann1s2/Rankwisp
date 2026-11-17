@@ -1,16 +1,28 @@
-# Minimal Rankwisp identity
+# Rankwisp chart identity
 
-The user rejected the original cartoon figure and logo and explicitly requested a
-minimal, good-looking result. The replacement is an abstract rising-r/wisp symbol,
-without a face, limbs, magnifier, sparkles or decorative character.
+The latest user direction replaces the abstract organic mark with a clear analytics
+chart. The current mark is original geometric SVG artwork: a rounded baseline, a
+three-segment rising path, a restrained underfill and one observation point. It has
+no plant silhouette, face, limbs or mascot.
 
-Generated with the **built-in Imagegen tool**, not a CLI/API-key workflow. Original PNGs
-are preserved here; production exports live in `app/public/brand/symbol.png`,
-`app/public/icon.png`, `app/public/favicon.png` and `app/public/social.png`.
-`node scripts/assets.mjs --native` produces consistent native icon/splash assets.
-The iOS icon is an opaque 1024×1024 RGB PNG with no pre-rounded outer corners.
+The active colours come directly from the original Rankblick `Theme.swift`: ink
+`#2B2D42`, slate `#8D99AE`, paper `#EDF2F4`, red `#EF233C`, crimson `#D80032`.
+The original Rankblick source and existing data were only read, never modified.
 
-## Final symbol prompt
+Current editable sources:
+
+- `app/public/brand/symbol.svg` — transparent ink mark with slate underfill and red point.
+- `app/public/brand/app-icon.svg` — opaque ink icon with paper path and red point.
+
+`node scripts/assets.mjs --native` deterministically exports the website symbol,
+favicon, social image, 1024×1024 opaque iOS icon and native splash screens. The operating
+system supplies the app icon's outer mask. Website and app share the same geometry.
+The logo is included under the repository's MIT license.
+
+The earlier Imagegen concepts below are archived for provenance only. Their original
+PNGs remain in this directory and are no longer production inputs.
+
+## Archived abstract-wisp concept prompt
 
 Use case: logo-brand. Asset type: final standalone brand symbol for Rankwisp, a premium
 app for App Store visibility research. Create one exceptionally refined MINIMALIST icon
@@ -41,4 +53,5 @@ app icon asset, not a mockup. Exact source shape, premium minimal appearance.
 
 The source files contain the actual generated artwork. Prompt color/style instructions
 are creative specifications, not a claim that each raster pixel has an exact hex value.
-Application UI tokens retain the five exact requested palette values.
+These archived prompts describe the superseded concept and its old colours. Current
+UI tokens and production assets use the original Rankblick palette documented above.

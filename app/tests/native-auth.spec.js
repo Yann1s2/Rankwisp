@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 // Native shell CSP is tested in native-security; localhost test host has a web-only CSP.
 test.use({bypassCSP:true});
 const ticket='t'.repeat(43), code='c'.repeat(43), session='s'.repeat(43);
-async function mockNative(page, storageFailure=false) {
+async function mockNative(page, storageFailure=false, {skipIntroduction=true}={}) {
   await page.addInitScript((storageFailure)=>{
     AbortSignal.timeout=undefined;AbortSignal.any=undefined;
     window.fixtureSessionFailure=storageFailure;window.fixtureSessionValue=null;window.authListeners=[];window.openedAuth=[];window.persistedSession=null;
@@ -21,6 +21,7 @@ async function mockNative(page, storageFailure=false) {
     return route.fulfill({json:{ok:true}});
   });
   await page.goto('/app');
+  if(skipIntroduction) await page.getByRole('button',{name:'Skip introduction',exact:true}).click();
   return calls;
 }
 test('native login requires this device callback before token exchange and secure persistence',async({page})=>{
@@ -56,3 +57,59 @@ test('native login cancellation removes callback listener without exchanging a s
   await page.getByRole('button',{name:'Try again',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Meet your next chapter.'})).toBeVisible();
  });
+
+test('native introduction completes three steps, restores focus and can be replayed without a sign-in',async({page})=>{
+  const calls=await mockNative(page,false,{skipIntroduction:false});
+  const first=page.locator('.welcome-page').getByRole('heading',{name:'Good apps deserve to be found.',exact:true});
+  await expect(first).toBeFocused();
+  await expect(page.getByRole('button',{name:'Step 1',exact:true})).toHaveAttribute('aria-current','step');
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Start with your own app.',exact:true})).toBeFocused();
+  await page.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(first).toBeFocused();
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Watch what really changes.',exact:true})).toBeFocused();
+  await expect(page.getByRole('button',{name:'Step 3',exact:true})).toHaveAttribute('aria-current','step');
+  await page.getByRole('button',{name:'Get started',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>localStorage.getItem('rankwisp-introduction-v1'))).toBe('seen');
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
+  await expect(first).toHaveCount(0);
+  await page.getByRole('button',{name:'A quick introduction',exact:true}).click();
+  await expect(first).toBeFocused();
+  await page.getByRole('button',{name:'Skip introduction',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
+  expect(calls).toHaveLength(0);
+  expect(await page.evaluate(()=>window.persistedSession)).toBe(null);
+});
+
+test.describe('native introduction follows device language and preserves an explicit choice',()=>{
+  test.use({locale:'de-CH'});
+  test('German device locale can be switched to English and persists after reload',async({page})=>{
+    await mockNative(page,false,{skipIntroduction:false});
+    await expect(page.getByRole('heading',{name:'Gute Apps verdienen Sichtbarkeit.',exact:true})).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang','de');
+    await page.getByRole('button',{name:'Sprache wechseln',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Good apps deserve to be found.',exact:true})).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang','en');
+    await page.reload();
+    await expect(page.getByRole('heading',{name:'Good apps deserve to be found.',exact:true})).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang','en');
+  });
+});
+
+test('native introduction respects reduced motion while keeping the final chart visible',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await mockNative(page,false,{skipIntroduction:false});
+  await page.getByRole('button',{name:'Step 3',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Watch what really changes.',exact:true})).toBeVisible();
+  await expect(page.locator('.welcome-panel')).toHaveCSS('animation-name','none');
+  await expect(page.locator('.welcome-mark')).toHaveCSS('transition-duration','0s');
+  await expect(page.locator('.welcome-trail')).toHaveCSS('opacity','1');
+  await expect(page.locator('.welcome-trail path')).toHaveCSS('animation-name','none');
+  expect(await page.locator('.welcome-trail path').evaluate(node=>parseFloat(getComputedStyle(node).strokeDashoffset))).toBe(0);
+  await page.getByRole('button',{name:'Get started',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
+});

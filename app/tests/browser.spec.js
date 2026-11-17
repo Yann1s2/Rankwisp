@@ -15,7 +15,7 @@ test("marketing EN/DE, navigation and responsive layout", async ({ page }) => {
     "noindex,nofollow",
   );
   await expect(
-    page.getByRole("link", { name: "Open source · MIT", exact: true }),
+    page.getByRole("contentinfo").getByRole("link", { name: "Open source · MIT", exact: true }),
   ).toHaveAttribute("href", "https://github.com/Yann1s2/Rankwisp");
   await page.getByRole("link", { name: "EN", exact: true }).click();
   await expect(
@@ -94,6 +94,8 @@ test("real backend registration, import, archive, export, AI fallback and sign o
     .getByLabel("Password", { exact: false })
     .fill("a safe testing password");
   await page.getByRole("button", { name: "Start my 24 days" }).click();
+  await expect(page.getByRole("heading", { name: "First, find your app." })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Meet your next chapter." }),
   ).toBeVisible();
@@ -267,7 +269,7 @@ test("Google-only configuration and cancelled login work without modern AbortSig
   ).toHaveCount(0);
   await expect(
     page.getByText(
-      "Google sign-in is temporarily unavailable. Please try again later or contact support.",
+      "Google sign-in has not been enabled for this service yet. Contact support for access.",
     ),
   ).toBeVisible();
   await expect(page).not.toHaveURL(/authError/);
@@ -573,4 +575,50 @@ test("keyword service failures preserve the reviewed manual draft", async ({
   await expect(
     dialog.getByRole("button", { name: "Add keywords", exact: true }),
   ).toBeEnabled();
+});
+
+test("keyword standings retain absolute ranks and keep comparison details accessible", async ({ page }) => {
+  await page.goto("/app?demo=1");
+  await page.getByRole("button", {name: "Competitors", exact: true}).click();
+  const standings = page.locator(".keyword-standings");
+  const own = standings.locator("li.is-own");
+  await expect(own.locator(".keyword-standings-rank")).toContainText("#8");
+  await expect(standings.locator("li").filter({hasText:"Daily Ritual"}).locator(".keyword-standings-rank")).toContainText("#1");
+  await expect(standings.locator("li").filter({hasText:"Small Steps"}).locator(".keyword-standings-rank")).toContainText("#9");
+  await page.getByLabel("Ranking keyword").selectOption("demo-1");
+  await expect(own.locator(".keyword-standings-rank")).toContainText("#6");
+  await expect(standings.locator("li").filter({hasText:"Small Steps"}).locator(".keyword-standings-rank")).toContainText("#7");
+  const details = page.locator(".standings-comparison-details");
+  await expect(details).not.toHaveAttribute("open");
+  await details.locator("summary").click();
+  await expect(page.getByRole("button",{name:"Refresh app metadata",exact:true})).toBeVisible();
+  await details.locator("summary").click();
+  await page.getByRole("button",{name:"Review selection",exact:true}).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("button",{name:"Remove",exact:true})).toHaveCount(2);
+});
+
+test("long history and keyword tables scroll inside bounded desktop regions", async ({page}) => {
+  await page.goto("/app?demo=1");
+  for (const section of ["Rank history", "Keywords"]) {
+    await page.setViewportSize({width:1360,height:816});
+    await page.getByRole("button",{name:section,exact:true}).click();
+    await page.locator(".table-scroll tbody tr").first().waitFor();
+    await page.locator(".table-scroll tbody").evaluate(body => {
+      const rows=[...body.children];
+      while(body.children.length<28) body.append(rows[body.children.length%rows.length].cloneNode(true));
+    });
+    for (const viewport of [{width:1360,height:816},{width:780,height:620},{width:390,height:844}]) {
+      await page.setViewportSize(viewport);
+      await expect.poll(()=>page.locator(".workspace-main").evaluate(el=>el.scrollHeight-el.clientHeight)).toBeLessThanOrEqual(1);
+      const table=page.locator(".table-scroll");
+      await expect.poll(()=>table.evaluate(el=>el.clientHeight)).toBeGreaterThanOrEqual(75);
+      expect(await table.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
+      await table.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+      expect(await page.locator(".workspace-main").evaluate(el=>el.scrollTop)).toBe(0);
+      if(section==="Rank history") await expect.poll(()=>page.locator(".chart-stage").evaluate(el=>el.clientHeight)).toBeGreaterThanOrEqual(75);
+    }
+  }
+  await page.setViewportSize({width:320,height:568});
+  await expect.poll(()=>page.locator(".table-scroll").evaluate(el=>el.clientHeight)).toBeGreaterThanOrEqual(100);
 });

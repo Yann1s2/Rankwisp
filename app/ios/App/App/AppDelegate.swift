@@ -14,7 +14,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Explicitly own the scene window: no dependency on legacy app-window or storyboard loading.
         let mainWindow = UIWindow(windowScene: windowScene)
         mainWindow.rootViewController = RankwispViewController()
-        mainWindow.backgroundColor = UIColor(red: 1, green: 248.0 / 255.0, blue: 240.0 / 255.0, alpha: 1)
+        mainWindow.backgroundColor = UIColor(red: 237.0 / 255.0, green: 242.0 / 255.0, blue: 244.0 / 255.0, alpha: 1)
         window = mainWindow
         mainWindow.makeKeyAndVisible()
         for context in connectionOptions.urlContexts { forward(context) }

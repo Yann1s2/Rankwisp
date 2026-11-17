@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -9,23 +9,156 @@ import {
   ChartNoAxesCombined,
   Users,
   ShieldCheck,
-  Sun,
   Plus,
   ArrowDownToLine,
-  Command,
-  MousePointer2,
-  Layers,
   Mail,
   Download,
   Apple,
   Monitor,
-  Smartphone,
-  LayoutDashboard,
 } from "lucide-react";
-import { Brand, Button, Chart, AppIcon } from "./components";
+import { Brand } from "./components";
 import { LocaleProvider, useLocale } from "./i18n";
-import { demoWorkspace } from "./demo.mjs";
-const sample = demoWorkspace().projects[0];
+import "./marketing-polish.css";
+const RELEASE =
+  "https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1";
+const ASSETS =
+  "https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.1-preview.1/";
+function DownloadChoices() {
+  const { tr } = useLocale();
+  const [platform, setPlatform] = useState(null);
+  useEffect(() => {
+    const device =
+      navigator.userAgentData?.platform ||
+      navigator.platform ||
+      navigator.userAgent;
+    const mobile =
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (/Mac/i.test(device) && navigator.maxTouchPoints > 1);
+    setPlatform(
+      mobile
+        ? "mobile"
+        : /Win/i.test(device)
+          ? "windows"
+          : /Mac/i.test(device)
+            ? "mac"
+            : "other",
+    );
+  }, []);
+  return (
+    <div className="download-choices" data-platform={platform || "unknown"}>
+      <p className="download-recommendation" aria-live="polite">
+        {platform === "mac"
+          ? tr(
+              "macOS detected · Apple Silicon build",
+              "macOS erkannt · Build für Apple Silicon",
+            )
+          : platform === "windows"
+            ? tr("Windows detected · x64 build", "Windows erkannt · x64-Build")
+            : platform === "mobile"
+              ? tr(
+                  "On mobile? Explore the browser demo, or download for your computer.",
+                  "Mobil unterwegs? Öffne die Browser-Demo oder lade die App für deinen Computer.",
+                )
+              : tr(
+                  "Choose your desktop preview",
+                  "Wähle deine Desktop-Vorschau",
+                )}
+      </p>
+      <div className="download-buttons">
+        <a
+          href={ASSETS + "Rankwisp-0.2.1-mac-arm64.zip"}
+          className={
+            "download-button " + (platform === "mac" ? "recommended" : "")
+          }
+        >
+          <Apple size={23} aria-hidden="true" />
+          <span>
+            <strong>{tr("Download for Mac", "Für Mac herunterladen")}</strong>
+            <small>Apple Silicon · ZIP · 123 MB</small>
+          </span>
+          <Download size={16} aria-hidden="true" />
+        </a>
+        <a
+          href={ASSETS + "Rankwisp-0.2.1-win.zip"}
+          className={
+            "download-button " + (platform === "windows" ? "recommended" : "")
+          }
+        >
+          <Monitor size={23} aria-hidden="true" />
+          <span>
+            <strong>
+              {tr("Download for Windows", "Für Windows herunterladen")}
+            </strong>
+            <small>x64 · ZIP · 154 MB</small>
+          </span>
+          <Download size={16} aria-hidden="true" />
+        </a>
+      </div>
+      <p className="download-preview-note">
+        {tr(
+          "v0.2.1-preview.1 · Unsigned development previews. Mac notarisation and Windows runtime validation are pending.",
+          "v0.2.1-preview.1 · Unsignierte Entwicklungsvorschauen. Mac-Notarisierung und Windows-Laufzeitprüfung stehen aus.",
+        )}{" "}
+        <a href={RELEASE}>
+          {tr("Release notes & checksums", "Versionshinweise & Prüfsummen")}{" "}
+          <ArrowUpRight size={11} aria-hidden="true" />
+        </a>
+      </p>
+    </div>
+  );
+}
+function ProductShot({ mobile = true }) {
+  const { tr } = useLocale();
+  return (
+    <figure className="product-shot" id="product">
+      <div className="product-shot-heading">
+        <span>RANKWISP / {tr("YOUR WORKSPACE", "DEIN ARBEITSBEREICH")}</span>
+        <a href="/app/?demo=1">
+          {tr("Try the demo", "Demo öffnen")} <ArrowUpRight size={14} />
+        </a>
+      </div>
+      <div className="product-shot-window">
+        <span className="window-dots" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span>Rankwisp</span>
+        <span>{tr("Development preview", "Entwicklungsvorschau")}</span>
+      </div>
+      <picture>
+        {mobile && (
+          <source media="(max-width: 600px)" srcSet="/site/app-mobile.webp" />
+        )}
+        <img
+          src="/site/app-overview.webp"
+          width="1440"
+          height="900"
+          fetchPriority="high"
+          alt={tr(
+            "Rankwisp overview with keyword positions, ranking history and next steps. Screenshot of the real demo with fictional data.",
+            "Rankwisp-Übersicht mit Keyword-Positionen, Ranking-Verlauf und nächsten Schritten. Screenshot der echten Demo mit fiktiven Daten.",
+          )}
+        />
+      </picture>
+      <figcaption>
+        <span>
+          {tr(
+            "The real app. Fictional demo data.",
+            "Die echte App. Fiktive Demo-Daten.",
+          )}
+        </span>
+        <span>
+          {tr(
+            "Your data stays yours to export.",
+            "Deine Daten bleiben exportierbar.",
+          )}
+        </span>
+      </figcaption>
+    </figure>
+  );
+}
+
 export function Marketing({ locale = "en", page = "home" }) {
   return (
     <LocaleProvider initial={locale}>
@@ -36,9 +169,17 @@ export function Marketing({ locale = "en", page = "home" }) {
 function MarketingBody({ page }) {
   const { tr, locale } = useLocale();
   const [menu, setMenu] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (event) => {
+      if (event.key === "Escape") setMenu(false);
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [menu]);
   const link = (p) => `/${locale}${p === "home" ? "" : "/" + p}`;
   return (
-    <div className="marketing">
+    <div className="marketing marketing-polished">
       <a href="#content" className="skip">
         {tr("Skip to content", "Zum Inhalt")}
       </a>
@@ -48,12 +189,17 @@ function MarketingBody({ page }) {
         </a>
         <nav
           className={menu ? "open" : ""}
+          id="marketing-navigation"
+          onClick={(event) => {
+            if (event.target.closest("a")) setMenu(false);
+          }}
           aria-label={tr("Main navigation", "Hauptnavigation")}
         >
           <a href={link("home") + "#product"}>{tr("Product", "Produkt")}</a>
           <a href={link("home") + "#how"}>
             {tr("How it works", "So funktioniert’s")}
           </a>
+          <a href={link("downloads")}>{tr("Downloads", "Downloads")}</a>
           <a href={link("home") + "#pricing"}>{tr("Pricing", "Preis")}</a>
           <a href={link("support")}>{tr("Support", "Support")}</a>
           <a
@@ -67,6 +213,14 @@ function MarketingBody({ page }) {
         <div className="site-actions">
           <a
             className="locale-button"
+            onClick={() => {
+              try {
+                localStorage.setItem(
+                  "rankwisp-language",
+                  locale === "en" ? "de" : "en",
+                );
+              } catch {}
+            }}
             href={`/${locale === "en" ? "de" : "en"}${page === "home" ? "" : "/" + page}`}
           >
             <Globe size={14} />
@@ -75,14 +229,14 @@ function MarketingBody({ page }) {
           <a className="site-login" href="/app/">
             {tr("Sign in", "Anmelden")}
           </a>
-          <a className="button" href="/app/">
-            {tr("Explore Rankwisp", "Rankwisp entdecken")}{" "}
-            <ArrowUpRight size={14} />
+          <a className="button" href={link("downloads")}>
+            {tr("Get Rankwisp", "Rankwisp laden")} <ArrowUpRight size={14} />
           </a>
           <button
             className="icon-button site-menu"
             onClick={() => setMenu(!menu)}
             aria-expanded={menu}
+            aria-controls="marketing-navigation"
             aria-label={tr("Toggle navigation", "Navigation umschalten")}
           >
             <ChevronDown size={20} />
@@ -92,105 +246,83 @@ function MarketingBody({ page }) {
       <main id="content">
         {page === "home" ? (
           <>
-            <section className="hero">
-              <div className="hero-eyebrow">
-                <span />
-                <span>
-                  {tr(
-                    "A little clarity. A lot of possibility.",
-                    "Ein klarer Blick. Neue Möglichkeiten.",
-                  )}
-                </span>
-              </div>
-              <h1>
-                {tr("Your app has potential.", "Deine App hat Potenzial.")}
-                <br />
-                <em>{tr("Make it visible.", "Mach es sichtbar.")}</em>
-              </h1>
-              <p>
-                {tr(
-                  "Meet the calmer way to grow on the App Store. Understand your rankings, find the right comparisons, and turn real signals into your next good move.",
-                  "Entdecke den entspannten Weg zu mehr Sichtbarkeit im App Store. Verstehe deine Rankings, finde passende Vergleiche und leite aus echten Signalen deinen nächsten Schritt ab.",
-                )}
-              </p>
-              <div className="hero-actions">
-                <a className="button large" href="/app/">
-                  {tr(
-                    "Find your app’s next move",
-                    "Finde den nächsten Schritt",
-                  )}{" "}
-                  <ArrowUpRight size={18} />
-                </a>
-                <a className="button ghost large" href="/app/?demo=1">
-                  {tr("Take a look inside", "Schau hinein")}{" "}
-                  <ArrowRight size={16} />
-                </a>
-              </div>
-              <div className="hero-reassurance">
-                <span>
-                  <Check size={13} />
-                  {tr("24 days to explore", "24 Tage entdecken")}
-                </span>
-                <span>
-                  <Check size={13} />
-                  {tr("No card needed", "Ohne Kreditkarte")}
-                </span>
-                <span>
-                  <Check size={13} />
-                  {tr("One-time purchase", "Einmaliger Kauf")}
-                </span>
-              </div>
-              <div className="product-stage" id="product">
-                <div className="stage-label">
-                  <span className="small-label">
-                    RANKWISP / {tr("WORKSPACE", "ARBEITSBEREICH")}
-                  </span>
-                  <span>
+            <section className="site-hero">
+              <div className="hero-editorial">
+                <div className="hero-copy">
+                  <div className="hero-kicker">
+                    <span />{" "}
                     {tr(
-                      "An illustrative look inside",
-                      "Ein illustrativer Einblick",
+                      "A LITTLE CLARITY FOR APP MAKERS",
+                      "MEHR KLARHEIT FÜR APP-ENTWICKLER",
                     )}
+                  </div>
+                  <h1>
+                    {tr("Your app has potential.", "Deine App hat Potenzial.")}
+                    <br />
+                    <em>{tr("Make it visible.", "Mach es sichtbar.")}</em>
+                  </h1>
+                  <p>
+                    {tr(
+                      "Know where your app stands. Track App Store keywords, compare the right apps and turn observations into your next move.",
+                      "Wisse, wo deine App steht. Beobachte App-Store-Keywords, vergleiche die passenden Apps und leite aus Messungen deinen nächsten Schritt ab.",
+                    )}
+                  </p>
+                  <DownloadChoices />
+                  <div className="hero-browser-links">
+                    <a href="/app/?demo=1">
+                      {tr("Explore the browser demo", "Browser-Demo entdecken")}{" "}
+                      <ArrowUpRight size={15} />
+                    </a>
+                    <span aria-hidden="true">/</span>
+                    <a href="/app/">
+                      {tr("Sign in", "Anmelden")} <ArrowRight size={15} />
+                    </a>
+                  </div>
+                  <p className="login-readiness">
+                    {tr(
+                      "Google sign-in is awaiting configuration. You can explore the demo without an account.",
+                      "Die Einrichtung der Google-Anmeldung steht noch aus. Die Demo ist ohne Konto zugänglich.",
+                    )}
+                  </p>
+                </div>
+                <div className="brand-presence" aria-hidden="true">
+                  <div className="brand-presence-lines">
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                  <img
+                    src="/brand/symbol.png"
+                    width="320"
+                    height="320"
+                    alt=""
+                  />
+                  <span>
+                    {tr("LESS NOISE.", "WENIGER RAUSCHEN.")}
+                    <br />
+                    {tr("MORE PERSPECTIVE.", "MEHR ÜBERBLICK.")}
                   </span>
                 </div>
-                <ProductPreview />
-                <div className="stage-bottom">
-                  <span>
-                    <ShieldCheck size={14} />
-                    {tr(
-                      "Fictional example data. Real interface.",
-                      "Fiktive Beispieldaten. Echte Oberfläche.",
-                    )}
-                  </span>
-                  <a href="/app/?demo=1">
-                    {tr(
-                      "Explore the interactive preview",
-                      "Interaktive Vorschau öffnen",
-                    )}{" "}
-                    <ArrowUpRight size={14} />
-                  </a>
-                </div>
               </div>
-              <div className="platform-line">
+              <ProductShot />
+              <div className="product-principles">
                 <span>
+                  <ShieldCheck size={15} />
                   {tr(
-                    "Built around your workflow.",
-                    "Für deinen Arbeitsalltag.",
+                    "Observations, not estimates",
+                    "Messungen statt Schätzungen",
                   )}
                 </span>
                 <span>
-                  <Monitor size={17} />
-                  macOS
+                  <ArrowDownToLine size={15} />
+                  {tr("Your history, exportable", "Dein Verlauf, exportierbar")}
                 </span>
-                <span>
-                  <Layers size={17} />
-                  Windows
-                </span>
-                <span>
-                  <Smartphone size={17} />
-                  iOS
-                </span>
-                <a href={link("downloads")}>
-                  {tr("See build availability", "Build-Verfügbarkeit ansehen")}{" "}
+                <a
+                  href="https://github.com/Yann1s2/Rankwisp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {tr("Open source · MIT", "Open Source · MIT")}{" "}
                   <ArrowUpRight size={13} />
                 </a>
               </div>
@@ -284,54 +416,24 @@ function MarketingBody({ page }) {
                 </h2>
               </div>
               <div className="how-grid">
-                <div className="onboarding-illustration">
-                  <div className="tiny-window">
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                  <div className="illustration-search">
-                    <Search size={18} />
-                    <span>{tr("Find your app…", "Finde deine App…")}</span>
-                    <kbd>↵</kbd>
-                  </div>
-                  <div className="illustration-result">
-                    <AppIcon size={48} />
-                    <div>
-                      <strong>Daylight</strong>
-                      <span>
-                        {tr(
-                          "Illustrative app · Productivity",
-                          "Beispiel-App · Produktivität",
-                        )}
-                      </span>
-                    </div>
-                    <span className="selected-check">
-                      <Check size={16} />
-                    </span>
-                  </div>
-                  <div className="illustration-result muted-result">
-                    <span className="abstract-app lavender">
-                      <Layers size={22} />
-                    </span>
-                    <div>
-                      <strong>Daily Ritual</strong>
-                      <span>
-                        {tr(
-                          "Suggested comparison",
-                          "Vorgeschlagener Vergleich",
-                        )}
-                      </span>
-                    </div>
-                    <Plus size={17} />
-                  </div>
-                  <p className="small muted">
-                    {tr(
-                      "You choose what belongs in your workspace.",
-                      "Du entscheidest, was in deinen Arbeitsbereich gehört.",
+                <figure className="keyword-shot">
+                  <img
+                    src="/site/app-keywords.webp"
+                    width="1440"
+                    height="900"
+                    loading="lazy"
+                    alt={tr(
+                      "The real Rankwisp keyword manager, showing editable keyword groups and archiving controls with fictional demo data.",
+                      "Die echte Rankwisp-Keyword-Verwaltung mit bearbeitbaren Gruppen und Archivierung anhand fiktiver Demo-Daten.",
                     )}
-                  </p>
-                </div>
+                  />
+                  <figcaption>
+                    {tr(
+                      "A considered workspace. A clear next step.",
+                      "Ein durchdachter Arbeitsbereich. Ein klarer nächster Schritt.",
+                    )}
+                  </figcaption>
+                </figure>
                 <div className="how-steps">
                   {[
                     [
@@ -525,8 +627,8 @@ function MarketingBody({ page }) {
                       "Kann ich bereits alle Plattformen herunterladen?",
                     ),
                     tr(
-                      "Not yet. This is a private development preview. Native macOS, Windows and iOS packaging is part of the project, but public installers appear only after platform validation and signing.",
-                      "Noch nicht. Dies ist eine private Entwicklungsvorschau. Native macOS-, Windows- und iOS-Pakete gehören zum Projekt. Öffentliche Installer folgen erst nach Plattformprüfung und Signierung.",
+                      "Mac Apple Silicon and Windows x64 previews are available as ZIP downloads. They are unsigned; Mac notarisation and Windows runtime validation remain pending. The iOS artifact is only for the Xcode Simulator, not a physical iPhone. The browser demo works without installing anything.",
+                      "Vorschauen für Mac mit Apple Silicon und Windows x64 sind als ZIP verfügbar. Sie sind unsigniert; Mac-Notarisierung und Windows-Laufzeitprüfung stehen aus. Das iOS-Artefakt ist nur für den Xcode-Simulator, nicht für ein physisches iPhone. Die Browser-Demo benötigt keine Installation.",
                     ),
                   ],
                   [
@@ -551,15 +653,21 @@ function MarketingBody({ page }) {
               </div>
             </section>
             <section className="closing-section">
-              <Sun size={34} />
+              <img
+                className="closing-symbol"
+                src="/brand/symbol.png"
+                width="48"
+                height="48"
+                alt=""
+              />
               <h2>
                 {tr(
                   "Your next good move starts with a clearer view.",
                   "Dein nächster guter Schritt beginnt mit einem klaren Blick.",
                 )}
               </h2>
-              <a href="/app/" className="button light large">
-                {tr("Meet Rankwisp", "Rankwisp kennenlernen")}{" "}
+              <a href={link("downloads")} className="button light large">
+                {tr("Get the preview", "Vorschau herunterladen")}{" "}
                 <ArrowUpRight size={18} />
               </a>
             </section>
@@ -604,147 +712,6 @@ function MarketingBody({ page }) {
     </div>
   );
 }
-function ProductPreview() {
-  const { tr } = useLocale();
-  return (
-    <div className="product-preview">
-      <aside>
-        <Brand />
-        <div className="preview-project">
-          <AppIcon size={30} />
-          <span>
-            Daylight<small>US App Store</small>
-          </span>
-          <ChevronDown size={12} />
-        </div>
-        {[
-          [LayoutDashboard, tr("Overview", "Übersicht")],
-          [Search, "Keywords"],
-          [ChartNoAxesCombined, tr("Rank history", "Ranking-Verlauf")],
-          [Users, tr("Competitors", "Konkurrenz")],
-          [ArrowUpRight, tr("Next moves", "Nächste Schritte")],
-        ].map(([Icon, title], i) => (
-          <div className={"preview-nav " + (!i ? "active" : "")} key={title}>
-            <Icon size={14} />
-            {title}
-          </div>
-        ))}
-        <div className="preview-side-bottom">
-          <Sun size={15} />
-          {tr("A little room to explore.", "Zeit zum Entdecken.")}
-        </div>
-      </aside>
-      <div className="preview-main">
-        <header>
-          <span>
-            {tr("Workspace", "Arbeitsbereich")} /{" "}
-            <strong>{tr("Overview", "Übersicht")}</strong>
-          </span>
-          <span>
-            <Globe size={12} /> US
-          </span>
-        </header>
-        <div className="preview-content">
-          <div className="preview-heading">
-            <div>
-              <span className="eyebrow">DAYLIGHT · UNITED STATES</span>
-              <h2>
-                {tr(
-                  "A clearer view of your growth.",
-                  "Ein klarer Blick auf deine Entwicklung.",
-                )}
-              </h2>
-              <p>
-                {tr(
-                  "Small signals. Meaningful progress.",
-                  "Kleine Signale. Sichtbare Fortschritte.",
-                )}
-              </p>
-            </div>
-            <span className="mini-button">
-              <Plus size={12} />
-              {tr("Add keyword", "Keyword hinzufügen")}
-            </span>
-          </div>
-          <div className="preview-metrics">
-            {[
-              [tr("Keywords tracked", "Beobachtete Keywords"), "4"],
-              [tr("Top 10 positions", "Top-10-Positionen"), "3"],
-              [tr("Moving up", "Aufwärtsbewegungen"), "4"],
-              [tr("Data coverage", "Datenabdeckung"), "100%"],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-                <small>{tr("Illustrative data", "Beispieldaten")}</small>
-              </div>
-            ))}
-          </div>
-          <div className="preview-chart-row">
-            <div className="panel">
-              <div className="panel-heading">
-                <div>
-                  <h3>
-                    {tr(
-                      "Your visibility, over time",
-                      "Deine Sichtbarkeit im Verlauf",
-                    )}
-                  </h3>
-                  <p>daily planner</p>
-                </div>
-                <span className="pill">30{tr("D", "T")}</span>
-              </div>
-              <Chart keyword={sample.keywords[0]} illustration />
-            </div>
-            <div className="preview-next">
-              <span>
-                <ArrowUpRight size={12} />
-                {tr("NEXT MOVE", "NÄCHSTER SCHRITT")}
-              </span>
-              <ArrowUpRight size={34} />
-              <h3>
-                {tr(
-                  "Small changes. Clearer signals.",
-                  "Kleine Änderungen. Klare Signale.",
-                )}
-              </h3>
-              <p>
-                {tr(
-                  "Pick one keyword. Find one useful experiment.",
-                  "Ein Keyword. Ein nützliches Experiment.",
-                )}
-              </p>
-              <span className="mini-button">
-                {tr("Take a closer look", "Genauer hinschauen")}{" "}
-                <ArrowRight size={12} />
-              </span>
-            </div>
-          </div>
-          <div className="preview-table">
-            <strong>
-              {tr("Keywords to keep an eye on", "Keywords im Blick")}
-            </strong>
-            {sample.keywords.slice(0, 2).map((k) => (
-              <div key={k.id}>
-                <span>
-                  # <b>{k.text}</b>
-                </span>
-                <strong>{k.samples.at(-1).rank}</strong>
-                <span className="positive">
-                  ↗ {k.samples.at(-2).rank - k.samples.at(-1).rank}
-                </span>
-                <span className="status fresh">
-                  <i />
-                  {tr("Fresh", "Aktuell")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 function InfoPage({ page }) {
   const { tr, locale } = useLocale();
   const title =
@@ -762,15 +729,12 @@ function InfoPage({ page }) {
         "A little help, when you need it.",
         "Hilfe, wenn du sie brauchst.",
       ),
-      downloads: tr(
-        "A workspace that goes with you.",
-        "Ein Arbeitsbereich, der dich begleitet.",
-      ),
+      downloads: tr("Download Rankwisp.", "Rankwisp herunterladen."),
     }[page] || "Rankwisp";
   return (
     <section className="info-page site-section">
       <span className="eyebrow">
-        RANKWISP / {tr("PRIVATE PREVIEW", "PRIVATE VORSCHAU")}
+        RANKWISP / {tr("DEVELOPMENT PREVIEW", "ENTWICKLUNGSVORSCHAU")}
       </span>
       <h1>{title}</h1>
       {page === "support" ? (
@@ -809,51 +773,83 @@ function InfoPage({ page }) {
         <>
           <p className="lede">
             {tr(
-              "Native packages are under validation. No public signed installers are offered yet.",
-              "Native Pakete werden geprüft. Es werden noch keine öffentlich signierten Installer angeboten.",
+              "A clearer view, on your desktop. Download a development preview or explore the same interface in your browser.",
+              "Ein klarer Blick, auf deinem Desktop. Lade eine Entwicklungsvorschau herunter oder entdecke dieselbe Oberfläche im Browser.",
             )}
           </p>
-          <div className="platform-cards">
-            {[
-              [
-                Monitor,
-                "macOS",
-                tr(
-                  "Desktop package · signing & notarisation pending",
-                  "Desktop-Paket · Signierung & Notarisierung offen",
-                ),
-              ],
-              [
-                Layers,
-                "Windows",
-                tr(
-                  "Desktop package · Windows runtime validation pending",
-                  "Desktop-Paket · Laufzeitprüfung unter Windows offen",
-                ),
-              ],
-              [
-                Smartphone,
-                "iOS",
-                tr(
-                  "Native Xcode project · store submission pending",
-                  "Natives Xcode-Projekt · Store-Einreichung offen",
-                ),
-              ],
-            ].map(([Icon, name, detail]) => (
-              <article className="panel" key={name}>
-                <Icon size={30} />
-                <h2>{name}</h2>
-                <p>{detail}</p>
-                <span className="pill">
-                  {tr("Development build", "Entwicklungsbuild")}
-                </span>
-              </article>
-            ))}
+          <DownloadChoices />
+          <div className="download-guidance">
+            <article>
+              <Apple size={22} />
+              <h2>Mac · Apple Silicon</h2>
+              <p>
+                {tr(
+                  "For M-series Macs. Not Developer-ID signed or notarised; macOS may block this preview. No Intel Mac build is included.",
+                  "Für Macs mit M-Chip. Nicht mit Developer ID signiert oder notarisiert; macOS kann die Vorschau blockieren. Ein Build für Intel-Macs ist nicht enthalten.",
+                )}
+              </p>
+            </article>
+            <article>
+              <Monitor size={22} />
+              <h2>Windows · x64</h2>
+              <p>
+                {tr(
+                  "Portable ZIP: extract it, then open Rankwisp.exe. Not signed or runtime-verified on Windows yet. No automatic updater is included.",
+                  "Portables ZIP: Entpacken und Rankwisp.exe öffnen. Noch nicht signiert oder unter Windows laufzeitgeprüft. Ein automatischer Updater ist nicht enthalten.",
+                )}
+              </p>
+            </article>
           </div>
-          <a href="/app/?demo=1" className="button">
-            {tr("Open the browser preview", "Browser-Vorschau öffnen")}{" "}
-            <ArrowUpRight size={16} />
-          </a>
+          <div className="download-browser">
+            <div>
+              <h2>
+                {tr(
+                  "Prefer to take a look first?",
+                  "Lieber zuerst einen Blick hineinwerfen?",
+                )}
+              </h2>
+              <p>
+                {tr(
+                  "No installation or account needed for the demo. Hosted Google sign-in is not configured yet.",
+                  "Die Demo benötigt weder Installation noch Konto. Die gehostete Google-Anmeldung ist noch nicht eingerichtet.",
+                )}
+              </p>
+            </div>
+            <a href="/app/?demo=1" className="button">
+              {tr("Open the demo", "Demo öffnen")} <ArrowUpRight size={15} />
+            </a>
+            <a href="/app/" className="text-button">
+              {tr("Sign in", "Anmelden")} <ArrowRight size={14} />
+            </a>
+          </div>
+          <details className="developer-downloads">
+            <summary>
+              {tr("iOS Simulator & source code", "iOS-Simulator & Quellcode")}{" "}
+              <ChevronDown size={16} />
+            </summary>
+            <p>
+              {tr(
+                "The iOS build is for the Xcode Simulator. It is not an iPhone installer, App Store release or TestFlight invitation.",
+                "Der iOS-Build ist für den Xcode-Simulator. Er ist kein iPhone-Installer, App-Store-Release oder TestFlight-Zugang.",
+              )}
+            </p>
+            <div>
+              <a href={ASSETS + "Rankwisp-0.2.0-ios-simulator.zip"}>
+                {tr(
+                  "Download simulator build",
+                  "Simulator-Build herunterladen",
+                )}{" "}
+                <Download size={14} />
+              </a>
+              <a href="https://github.com/Yann1s2/Rankwisp">
+                {tr("Source code & setup", "Quellcode & Einrichtung")}{" "}
+                <ArrowUpRight size={14} />
+              </a>
+              <a href={ASSETS + "SHA256SUMS-0.2.1.txt"}>
+                {tr("Checksums", "Prüfsummen")} <ArrowUpRight size={14} />
+              </a>
+            </div>
+          </details>
         </>
       ) : page === "privacy" ? (
         <>

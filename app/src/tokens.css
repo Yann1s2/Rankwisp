@@ -1,15 +1,15 @@
 :root {
-  /* Rankwisp: paper + ink, confident navy, oxblood actions, warm peach delight. */
-  --charcoal: #1e1e24;
-  --oxblood: #92140c;
-  --cream: #fff8f0;
-  --peach: #ffcf99;
-  --navy: #111d4a;
-  --canvas: var(--cream);
-  --paper: #fffdf9;
-  --ink: var(--charcoal);
-  --muted: #64616b;
-  --line: #ded8d1;
+  /* Original Rankblick Theme.swift palette; its application data stays untouched. */
+  --ink: #2b2d42;
+  --slate: #8d99ae;
+  --paper: #edf2f4;
+  --red: #ef233c;
+  --crimson: #d80032;
+  /* Original canvas: ink at 3.5% over paper. Secondary text is contrast-adjusted. */
+  --canvas: #e6ebee;
+  --muted: #656b7c;
+  --soft: #dfe5ec;
+  --line: #cdd5df;
   --radius: 18px;
   --motion-fast: 140ms;
   --motion-enter: 220ms;

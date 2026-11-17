@@ -58,3 +58,37 @@ test('repository link opens externally only for the exact approved HTTPS reposit
   assert.equal(externalURL(repo+'/'),repo+'/');
   for(const url of [repo.replace('https:','http:'),repo.replace('github.com','github.com.evil.test'),repo.replace('github.com','attacker@github.com'),repo.replace('github.com','github.com:8443'),repo.replace('github.com','github.com:443'),repo+'-malicious',repo+'/../Other',repo+'?redirect=https://evil.test',repo+'#fragment','https://github.com/attacker/Rankwisp']) assert.equal(externalURL(url),null);
 });
+
+test('release links permit approved repository pages and native distribution assets', () => {
+  const repo='https://github.com/Yann1s2/Rankwisp';
+  for (const path of [
+    '/releases', '/releases/', '/releases/tag/v0.2.0-preview.1', '/releases/tag/v0.3.0-beta.1/',
+    '/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-mac-arm64.zip',
+    '/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-win.zip',
+    '/releases/download/v0.2.0-preview.1/SHA256SUMS-0.2.0.txt',
+  ]) assert.equal(externalURL(repo+path),repo+path,path);
+});
+
+test('release links reject spoofed hosts, redirect parameters and unapproved assets or routes', () => {
+  const repo='https://github.com/Yann1s2/Rankwisp';
+  const asset=repo+'/releases/download/v0.2.0/Rankwisp-0.2.0-mac-arm64.zip';
+  for (const url of [
+    asset.replace('https:','http:'),
+    asset.replace('github.com','github.com.evil.test'),
+    asset.replace('github.com','github.com@evil.test'),
+    asset.replace('github.com','evil.test@github.com'),
+    asset.replace('github.com','github.com:443'),
+    asset.replace('github.com','github.com:8443'),
+    asset.replace('/Yann1s2/','/attacker/'),
+    asset.replace('/Rankwisp/','/Rankwisp-malicious/'),
+    asset+'?redirect=https://evil.test', asset+'#download',
+    asset+'/extra', asset.replace('.zip','.exe'), asset.replace('.zip','.zip.exe'),
+    asset.replace('/Rankwisp-','/Unapproved-'),
+    asset.replace('/v0.2.0/','/latest/'),
+    repo+'/releases/latest', repo+'/releases/tag/v0.2.0/extra',
+    repo+'/releases/download/v0.2.0/../../../../attacker/Rankwisp',
+    repo+'/releases/download/v0.2.0/%2e%2e%2fattacker.zip',
+    repo+'/releases/download/v0.2.0/Rankwisp-%2fescape.zip',
+    repo+'/releases/download/v0.2.0/SHA256SUMS-0.2.0.txt.exe',
+  ]) assert.equal(externalURL(url),null,url);
+});

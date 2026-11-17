@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import "./onboarding-polish.css";
 import {
   Search,
   ArrowRight,
@@ -28,7 +29,10 @@ export default function Onboarding({
   const { tr, locale } = useLocale();
   const [step, setStep] = useState(0),
     [query, setQuery] = useState(""),
-    [country, setCountry] = useState("us"),
+    [country, setCountry] = useState(() => {
+      const region = (navigator.language || "").split("-")[1]?.toLowerCase();
+      return COUNTRIES.includes(region) ? region : "us";
+    }),
     [results, setResults] = useState(null),
     [own, setOwn] = useState(null),
     [term, setTerm] = useState(""),
@@ -37,6 +41,12 @@ export default function Onboarding({
     [keywords, setKeywords] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [automaticUpdates, setAutomaticUpdates] = useState(true);
+  const heading = useRef(null);
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.closest("dialog")?.scrollTo({ top: 0 });
+  }, [step]);
   const sequence = useRef(0);
   const countryNames = new Intl.DisplayNames([locale], { type: "region" });
   async function search(e) {
@@ -57,17 +67,37 @@ export default function Onboarding({
   }
   async function findRivals(e) {
     e?.preventDefault();
+    const s = ++sequence.current;
     setError("");
     setBusy(true);
     try {
       const data = await api(
         `/competitors?id=${own.id}&country=${country}&term=${encodeURIComponent(term)}`,
       );
-      setRivals(data.results);
+      if (s === sequence.current) setRivals(data.results);
     } catch (e) {
-      setError(errorText(e.message, locale));
+      if (s === sequence.current) setError(errorText(e.message, locale));
     } finally {
-      setBusy(false);
+      if (s === sequence.current) setBusy(false);
+    }
+  }
+  async function selectApp(app) {
+    const s = ++sequence.current;
+    setOwn(app);
+    setTerm(app.name);
+    setKeywords(app.name);
+    setStep(1);
+    setRivals(null);
+    setSelected([]);
+    setError("");
+    setBusy(true);
+    try {
+      const data = await api(`/competitors?id=${app.id}&country=${country}&term=${encodeURIComponent(app.name)}`);
+      if (s === sequence.current) setRivals(data.results);
+    } catch (e) {
+      if (s === sequence.current) setError(errorText(e.message, locale));
+    } finally {
+      if (s === sequence.current) setBusy(false);
     }
   }
   async function complete() {
@@ -83,7 +113,7 @@ export default function Onboarding({
       api("/telemetry", { surface: "app", event: "onboarding_complete" }).catch(
         () => {},
       );
-      onComplete(project);
+      await onComplete(project, automaticUpdates);
     } catch (e) {
       setError(errorText(e.message, locale));
     } finally {
@@ -103,7 +133,11 @@ export default function Onboarding({
           <i key={s} className={s <= step ? "complete" : ""} />
         ))}
       </div>
-      <h1>
+      <ol className="setup-steps" aria-label={tr("Setup progress", "Einrichtungsschritte")}>
+        {[tr("Your app", "Deine App"), tr("Comparisons", "Vergleiche"), tr("First measurement", "Erste Messung")].map((label, i) => <li key={label} aria-current={i === step ? "step" : undefined}><span>{i < step ? <Check size={12} /> : i + 1}</span>{label}</li>)}
+      </ol>
+      <section className="setup-stage" key={step}>
+      <h1 ref={heading} tabIndex={-1}>
         {
           [
             tr("First, find your app.", "Zuerst: Finde deine App."),
@@ -202,13 +236,7 @@ export default function Onboarding({
                 </div>
                 <Button
                   variant="secondary"
-                  onClick={() => {
-                    setOwn(app);
-                    setTerm(app.genre || app.name);
-                    setStep(1);
-                    setRivals(null);
-                    setSelected([]);
-                  }}
+                  onClick={() => selectApp(app)}
                 >
                   {tr("Select", "Auswählen")} <Plus size={14} />
                 </Button>
@@ -375,8 +403,10 @@ export default function Onboarding({
               "Wir schätzen keine Werte: Erst dein erster Abruf erzeugt eine Messung. Neue Keywords bleiben bis zu deiner Prüfung unklassifiziert.",
             )}
           </div>
+          <label className="setup-schedule"><input type="checkbox" checked={automaticUpdates} onChange={e => setAutomaticUpdates(e.target.checked)} /><span><strong>{tr("Keep a daily history", "Täglich einen Verlauf aufbauen")}</strong><small>{config?.localPreview ? tr("Checks run while your local server is running. You can change this in Settings.", "Abfragen laufen, solange dein lokaler Server läuft. Änderbar in den Einstellungen.") : tr("Check due keywords each day, within your plan limits. You can turn this off in Settings.", "Fällige Keywords täglich innerhalb deines Kontingents prüfen. In den Einstellungen abschaltbar.")}</small></span></label>
         </>
       )}
+      </section>
       <div className="onboarding-actions">
         <Button
           variant="ghost"
@@ -397,8 +427,8 @@ export default function Onboarding({
           </Button>
         )}
         {step === 2 && (
-          <Button onClick={complete} loading={busy}>
-            {tr("Create my workspace", "Arbeitsbereich erstellen")}{" "}
+          <Button onClick={complete} loading={busy} disabled={normalizeKeywords(keywords).length === 0}>
+            {tr("Start first measurement", "Erste Messung starten")}{" "}
             <ArrowRight size={16} />
           </Button>
         )}

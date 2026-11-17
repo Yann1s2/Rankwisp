@@ -1,18 +1,24 @@
 # Rankwisp visual identity and interaction review
 
 The latest user direction replaces the initial cartoon approach: minimal, refined, and
-free of characters or decorative mascots. The identity uses a small abstract navy mark,
+free of characters or decorative mascots. The identity uses a small geometric analytics mark,
 a quieter wordmark and precise, content-sized components. Existing product flows remain intact.
 
 ## Colour roles
 
 | Colour | Role |
 | --- | --- |
-| `#1E1E24` | Primary text |
-| `#92140C` | Main actions, errors, editorial emphasis |
-| `#FFF8F0` | Warm app and website canvas |
-| `#FFCF99` | Restrained trial and chart accents |
-| `#111D4A` | Navigation, first metric, charts and abstract mark |
+| `#2B2D42` | Ink: text, navigation, primary controls, chart lines and icon background |
+| `#8D99AE` | Slate: decorative chart tint, quiet borders and neutral accents |
+| `#EDF2F4` | Paper: app and website surfaces, inverse text |
+| `#EF233C` | Red: restrained graph endpoint and identity accents |
+| `#D80032` | Crimson: interactive emphasis, focus and error text |
+
+The user's latest direction explicitly replaces the previous Coolors palette with the
+original Rankblick palette, read without modification from
+`legacy/Sources/Rankblick/Theme.swift`. The outer canvas uses its 3.5% ink tint over paper
+(`#E6EBEE`). Small secondary text uses a contrast-adjusted ink/slate blend (`#656B7C`);
+the original light slate is decorative rather than small body text.
 
 Secondary neutrals are derived for borders and quiet text. Google's familiar multicolour
 mark is reserved for the Google sign-in control. No decorative gradient or glass surfaces
@@ -27,7 +33,7 @@ are used; the chart's subtle area tint represents its plotted series.
 | Mobile desktop-width keyword table | Compact labelled rows with grouping/archive controls | No horizontal swipe required to manage a keyword |
 | Large competitor cards | Compact mobile comparison rows | Compare three apps together |
 | Fixed 900px chart coordinates | ResizeObserver-sized SVG coordinates | Axis labels remain legible on phones |
-| Cartoon mascot and decorative sparkles | Abstract navy mark and ordinary directional icons | Follow the user’s revised minimalist direction |
+| Cartoon mascot and decorative sparkles | Geometric chart mark and ordinary directional icons | Follow the user’s revised minimalist direction |
 | Tall peach guidance card | Neutral panel sized to its content; compact mobile strip | Removes unnecessary visual weight and empty space |
 | Offset card and button shadows | Thin borders and flat surfaces | Calmer visual hierarchy |
 | Registration-first screen | Google-first, email only where supported | Reduce unnecessary forms |
@@ -81,3 +87,21 @@ manual-draft preservation, explicit save, provider-unavailable paths and modal a
 A final targeted test also verifies NFKC duplicate handling. Fixture screenshots are
 `screenshots/keyword-suggestions-desktop.png` and `screenshots/keyword-suggestions-mobile.png`;
 they demonstrate interaction with synthetic responses, not a live AI generation claim.
+
+## Public website and download revision
+
+The public landing now uses genuine screenshots of the app's explicitly labelled demo,
+not a separately simulated dashboard. Download buttons point to the published
+`v0.2.0-preview.1` release. OS detection recommends Mac or Windows while keeping both
+choices visible; iPad/Android and unknown platforms receive a neutral choice. Architecture,
+unsigned-preview status, Mac notarisation and Windows validation limits are stated beside
+the downloads. Login stays visible on mobile, with the credential limitation disclosed.
+
+The latest graph logo replaces the rejected organic mark in the website, app, favicon,
+social image and native icon/splash assets. The large website mark has a single restrained
+entrance, respects reduced motion and never serves as fabricated analytics evidence.
+
+Marketing verification: seven dedicated browser tests cover five platform profiles,
+16 locale/viewport combinations, remembered language choice, Escape navigation, real
+screenshot assets and zero serious/critical Axe violations across EN/DE home/downloads.
+Run with `npx playwright test --config=playwright.marketing.config.js`.

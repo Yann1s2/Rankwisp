@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from "react-dom/client";
 import App from "./App";
 import { Marketing } from "./marketing";
 import { LocaleProvider } from "./i18n";
+import { preferredLocale } from "../shared/locale.mjs";
 import "./style.css";
 import "./identity.css";
 const path = location.pathname;
@@ -12,10 +13,11 @@ const isApp =
     (location.protocol === "rankwisp:" ||
       !!window.rankwisp ||
       location.protocol === "capacitor:"));
-const locale =
-  path.split("/")[1] === "de"
-    ? "de"
-    : localStorage.getItem("rankwisp-language") || "en";
+const explicitLocale = path.split("/")[1];
+const locale = ["en", "de"].includes(explicitLocale) ? explicitLocale : preferredLocale();
+if (!isApp && path === "/" && locale === "de") {
+  location.replace("/de/" + location.search + location.hash);
+}
 document.documentElement.lang = locale;
 const tree = isApp ? (
   <LocaleProvider initial={locale}>

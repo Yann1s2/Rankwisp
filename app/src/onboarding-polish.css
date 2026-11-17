@@ -1,0 +1,33 @@
+.setup-steps { display:flex; list-style:none; padding:0; gap:22px; margin:20px 0 28px; color:var(--muted); }
+.setup-steps li { display:flex; gap:7px; align-items:center; font-size:11px; }
+.setup-steps li > span { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:#2b2d4209; border:1px solid var(--line); font-size:10px; }
+.setup-steps [aria-current] { color:var(--ink); font-weight:650; }
+.setup-steps [aria-current] > span { background:var(--ink); color:var(--paper); }
+.setup-stage { animation:setup-enter .28s cubic-bezier(.22,1,.36,1) both; }
+.setup-stage h1 { outline:none; }
+.setup-schedule { display:flex; gap:11px; padding:18px 0 8px; cursor:pointer; align-items:flex-start; }
+.setup-schedule input { margin-top:3px; accent-color:var(--ink); width:17px; height:17px; flex:none; }
+.setup-schedule strong { display:block; font-size:13px; }
+.setup-schedule small { display:block; font-size:11px; line-height:1.6; color:var(--muted); margin-top:5px; }
+@keyframes setup-enter { from { opacity:0; transform:translateX(10px); } to { opacity:1; transform:translateX(0); } }
+@media(max-width:600px) { .setup-steps { gap:12px; margin:15px 0 23px; } .setup-steps li { font-size:10px; gap:5px; } .setup-steps li > span { width:19px; height:19px; } }
+@media(prefers-reduced-motion:reduce) { .setup-stage { animation:none; } }
+/* The setup is a window: its actions stay visible; long results own their scroll. */
+dialog:has(.onboarding) { display:flex; flex-direction:column; max-height:calc(100dvh - 32px); overflow:hidden; }
+dialog:has(.onboarding) .modal-heading { flex:none; margin-bottom:8px; }
+dialog .onboarding { display:flex; flex-direction:column; min-height:0; }
+.onboarding > .onboarding-top, .onboarding > .step-track { display:none; }
+.onboarding > .setup-steps { flex:none; margin:12px 0 22px; }
+.onboarding > .setup-stage { min-height:0; overflow:auto; overscroll-behavior:contain; padding:1px 2px; }
+.onboarding .setup-stage h1 { font-size:25px; margin:0 0 10px; }
+.onboarding .setup-stage .lede { margin-bottom:18px; }
+.onboarding .setup-stage .app-results { max-height:min(290px,36dvh); overflow-y:auto; overscroll-behavior:contain; margin-bottom:0; }
+.onboarding .app-results > .app-result { flex-shrink:0; }
+.onboarding .setup-stage .rival-results { max-height:min(260px,32dvh); overflow-y:auto; overscroll-behavior:contain; }
+.onboarding .setup-stage .selected-app { margin-bottom:14px; padding:12px; }
+.onboarding .setup-stage .notice { padding:12px 14px; font-size:11px; }
+.onboarding .setup-stage textarea { min-height:80px; height:80px; }
+.onboarding > .onboarding-actions { position:static; flex:none; margin:18px 0 0; padding:12px 0 0; }
+@media(max-height:700px) { .onboarding > .setup-steps { margin:8px 0 14px; } .onboarding .setup-stage h1 { font-size:22px; } .onboarding .setup-stage .lede { margin-bottom:12px; } .onboarding > .onboarding-actions { margin-top:12px; } }
+.welcome-page .welcome-actions .button { border-color:#2b2d42; background:#2b2d42; box-shadow:none; }
+.welcome-page .welcome-actions .button:hover { background:#3a3e55; }

@@ -224,6 +224,8 @@ export function createApp(
   app.get("/api/config", (_q, res) =>
     res.json({
       localPreview: !prod,
+      authProvider: "email",
+      googleConfigured: false,
       registrationOpen: !prod && !env.INVITE_CODE,
       aiConfigured: !!env.OPENAI_API_KEY,
       paymentsConfigured:

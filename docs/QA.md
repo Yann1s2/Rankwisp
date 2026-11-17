@@ -160,3 +160,45 @@ MIT-Lizenz, bytegleiches neues Icon, keine Page-Errors und kein Dokumentüberlau
 390×844. Health/Config 200; Vorschlagsroute ohne Sitzung mit gültigem Origin 401,
 ohne Origin 403. Google/KI-Verfügbarkeitsflags bleiben korrekt false. Screenshots
 `live-*` und `preview-*` dokumentieren die tatsächlichen HTTPS-Seiten.
+
+
+## Native workflow and Rankblick palette — 0.2.1 preview
+
+On 17 November 2026 the packaged macOS app was exercised through its actual Electron
+window against an isolated local Node API, without mocked Apple responses. The flow
+registered a local test account, selected the Swiss storefront, searched for the user's
+app by name, selected two real competitors, edited six keywords and saved six initial
+measurements with zero fetch errors. Apple returned app ID 6760919212 as Intranet TAM,
+with developer HELMUT PETER LASSER. These are Apple Search API positions, not verified
+iPhone search positions.
+
+A native macOS Save dialog exported those initial measurements. A read-only copy of
+an existing Rankblick export then imported 574 genuine historical measurements across
+26 keywords (including archives), with a recovery copy retained by the local server.
+The source application and its files were not changed. Real app artwork was fetched
+through the metadata refresh action. Logout/re-login, persisted session recovery,
+three-step introduction/replay, and daily-refresh preference were exercised. Local
+scheduled checks require the local server to remain running; time was not manipulated
+to manufacture a multi-day test. Private exports and screenshots are outside this
+public repository and are not uploaded.
+
+The exact five source colors from legacy/Sources/Rankblick/Theme.swift replace the
+previous warm palette. Secondary text uses a contrast-adjusted derivative. The chart
+logo, app icons, native splash, website, onboarding and all app views share that system.
+The website's public screenshots use the explicitly labelled fictional demo, not the
+private account used for native verification.
+
+Native provider/bridge tests use injected responses and are separate from the actual
+Apple workflow above. Hosted Google sign-in and live Luna responses remain unverified
+until their provider credentials and access are configured. The Windows archive is a
+cross-build, not a Windows runtime sign-off. The existing iOS simulator download remains
+at 0.2.0; updated iOS source assets do not imply a new device release.
+
+Final layout checks used real history in the native window at 1360×816 and 780×620.
+History and keyword main regions fit their available height exactly; tables scroll
+internally. Small phones retain necessary scrolling instead of shrinking controls to
+unusable sizes. Sidebar spacing is compacted for short desktop windows.
+
+Automated final checkpoint: 38 Node tests, 19 workerd tests, 12 browser tests,
+7 website tests and 6 native-bridge/intro tests passed. Dependency audit reported
+zero known vulnerabilities. Browser suites also run in GitHub CI.

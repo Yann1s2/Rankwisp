@@ -47,7 +47,10 @@ function externalURL(raw) {
     const url = new URL(raw);
     if (url.username || url.password || url.port) return null;
     const provider = url.protocol === 'https:' && ['apps.apple.com', 'checkout.stripe.com'].includes(url.hostname);
-    const repository = /^https:\/\/github\.com\//i.test(raw) && url.protocol === 'https:' && url.hostname === 'github.com' && /^\/Yann1s2\/Rankwisp\/?$/.test(url.pathname) && !url.search && !url.hash;
+    const repositoryPath = /^\/Yann1s2\/Rankwisp\/?$/.test(url.pathname)
+      || /^\/Yann1s2\/Rankwisp\/releases(?:\/tag\/v[\w.-]+)?\/?$/.test(url.pathname)
+      || /^\/Yann1s2\/Rankwisp\/releases\/download\/v[\w.-]+\/(?:Rankwisp-[\w.-]+\.zip|SHA256SUMS-[\w.-]+\.txt)$/.test(url.pathname);
+    const repository = /^https:\/\/github\.com\//i.test(raw) && url.protocol === 'https:' && url.hostname === 'github.com' && repositoryPath && !url.search && !url.hash;
     const support = url.protocol === 'mailto:' && url.pathname === 'info@zhstudio.ch';
     return provider || repository || support ? url.href : null;
   } catch { return null; }

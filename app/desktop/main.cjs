@@ -91,7 +91,7 @@ if (primaryInstance) app.whenReady().then(() => {
   session.defaultSession.setPermissionCheckHandler(() => false);
   const win = new BrowserWindow({
     width: 1360, height: 900, minWidth: 780, minHeight: 620,
-    title: 'Rankwisp', backgroundColor: '#FFF8F0', icon: join(root, 'icon.png'),
+    title: 'Rankwisp', backgroundColor: '#EDF2F4', icon: join(root, 'icon.png'),
     webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false },
   });
   mainWindow = win;

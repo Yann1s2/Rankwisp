@@ -1,0 +1,225 @@
+/* The shell already supplies a definite remaining height. Keep scrolling in data regions. */
+.page-history .workspace-main,
+.page-keywords .workspace-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+.page-history .workspace-main > .page-heading,
+.page-keywords .workspace-main > .page-heading {
+  flex: none;
+  margin-bottom: 0;
+}
+.page-history .workspace-main > .notice,
+.page-keywords .workspace-main > .notice {
+  flex: none;
+}
+.page-history .workspace-main > .workspace-footer,
+.page-keywords .workspace-main > .workspace-footer {
+  flex: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+.page-history .workspace-main > .history-chart-panel,
+.page-history .workspace-main > .history-log-panel,
+.page-keywords .workspace-main > .keyword-management-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+.page-history .history-chart-panel > .panel-heading,
+.page-history .history-log-panel > .panel-heading {
+  flex: none;
+  gap: 10px;
+  padding: 11px 16px 8px;
+}
+.page-history .history-chart-panel .panel-heading > div:first-child {
+  min-width: 0;
+}
+.page-history .history-chart-panel .panel-heading h2 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.page-history .history-chart-panel .history-controls {
+  flex: none;
+  gap: 7px;
+}
+.page-history .history-chart-panel .history-controls select {
+  width: clamp(100px, 14vw, 180px);
+  max-width: 180px;
+}
+.page-history .history-chart-panel .polished-chart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.page-history .history-chart-panel .chart-stage {
+  flex: 1;
+  min-height: 0;
+}
+.page-history .history-chart-panel .chart-stage > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+.page-history .history-chart-panel .chart-legend,
+.page-history .history-chart-panel .chart-caption {
+  flex: none;
+}
+.page-history .history-chart-panel .chart-empty {
+  min-height: 0;
+  overflow: auto;
+}
+.page-history .history-log-panel > .table-scroll,
+.page-keywords .keyword-management-panel > .table-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.page-history .history-log-panel .table-scroll th,
+.page-keywords .keyword-management-panel .table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--paper);
+  box-shadow: 0 1px var(--line);
+}
+.page-history .history-log-panel > .notice {
+  flex: none;
+  margin: 0 12px 8px;
+}
+.page-history .history-log-panel > .empty,
+.page-keywords .keyword-management-panel > .empty {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+.page-keywords .keyword-management-panel > .table-toolbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+}
+.page-keywords .keyword-management-panel .table-toolbar .input-icon {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+.page-keywords .keyword-management-panel > .panel-note {
+  flex: none;
+  padding: 9px 16px;
+}
+@media (min-width: 761px) and (max-height: 750px) {
+  .page-history .workspace-main,
+  .page-keywords .workspace-main {
+    gap: 9px;
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+  .page-history .page-heading > div > p,
+  .page-keywords .page-heading > div > p,
+  .page-history .history-chart-panel .panel-heading p,
+  .page-history .history-log-panel .panel-heading p {
+    display: none;
+  }
+  .page-history .history-chart-panel .chart-caption {
+    display: none;
+  }
+  .page-history .history-chart-panel > .panel-heading,
+  .page-history .history-log-panel > .panel-heading {
+    padding: 9px 12px 6px;
+  }
+}
+@media (max-width: 760px) {
+  .page-history .workspace-main,
+  .page-keywords .workspace-main {
+    gap: 10px;
+  }
+  .page-history .history-chart-panel > .panel-heading {
+    flex-wrap: wrap;
+    padding: 10px 12px 6px;
+    gap: 6px;
+  }
+  .page-history .history-chart-panel .history-controls {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+  .page-history .history-chart-panel .history-controls select {
+    width: 46%;
+    max-width: none;
+  }
+  .page-history .history-chart-panel .panel-heading p,
+  .page-history .history-log-panel .panel-heading p {
+    display: none;
+  }
+  .page-history .history-log-panel > .panel-heading {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .page-history .history-log-panel .panel-heading h2 {
+    font-size: 14px;
+  }
+  .page-history .history-log-panel .panel-heading .button {
+    font-size: 11px;
+    padding-inline: 9px;
+  }
+  .page-keywords .keyword-management-panel > .table-toolbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .page-keywords .keyword-management-panel .table-toolbar .input-icon {
+    flex-basis: 65%;
+  }
+  .page-keywords .keyword-management-panel .table-scroll {
+    scrollbar-gutter: auto;
+  }
+  .page-keywords .keyword-management-panel .keyword-table.managed th {
+    position: static;
+  }
+}
+/* Short phones need two readable regions; avoid squeezing the plot or row controls. */
+@media (max-width: 760px) and (max-height: 650px) {
+  .page-history .workspace-main {
+    overflow-y: auto;
+  }
+  .page-history .workspace-main > .history-chart-panel {
+    flex: none;
+    height: 240px;
+  }
+  .page-history .workspace-main > .history-log-panel {
+    flex: none;
+    height: 250px;
+  }
+  .page-history .history-chart-panel .chart-caption {
+    display: none;
+  }
+  .page-history .workspace-main > .workspace-footer {
+    display: none;
+  }
+}
+@media (max-width: 760px) and (max-height: 650px) {
+  .page-keywords .workspace-main {
+    overflow-y: auto;
+  }
+  .page-keywords .workspace-main > .keyword-management-panel {
+    flex: none;
+    height: 370px;
+  }
+}

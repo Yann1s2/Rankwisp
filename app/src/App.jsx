@@ -60,6 +60,9 @@ import {
 } from "../shared/domain.mjs";
 import { demoWorkspace } from "./demo.mjs";
 import Onboarding from "./onboarding";
+import Welcome from "./Welcome";
+import { KeywordStandings } from "./KeywordStandings";
+import "./history-fit.css";
 import KeywordSuggestions, {
   appendKeywordSuggestions,
 } from "./KeywordSuggestions";
@@ -350,7 +353,10 @@ export default function App() {
     return (
       <Auth
         config={config}
-        onReady={load}
+        onReady={async (newAccount) => {
+          await load();
+          if (newAccount === true) setModal("onboarding");
+        }}
         notice={notice}
         onRetry={async () => {
           await retrySecureSession();
@@ -904,7 +910,7 @@ export default function App() {
                 </>
               )}
               {page === "keywords" && (
-                <section className="panel">
+                <section className="panel keyword-management-panel">
                   <div className="table-toolbar">
                     <label className="input-icon">
                       <Search size={16} />
@@ -980,7 +986,7 @@ export default function App() {
               )}
               {page === "history" && (
                 <>
-                  <section className="panel">
+                  <section className="panel history-chart-panel">
                     <div className="panel-heading">
                       <div>
                         <h2>
@@ -1022,7 +1028,7 @@ export default function App() {
                       illustration={demo}
                     />
                   </section>
-                  <section className="panel">
+                  <section className="panel history-log-panel">
                     <div className="panel-heading">
                       <div>
                         <h2>{tr("Measurement log", "Messprotokoll")}</h2>
@@ -1121,6 +1127,9 @@ export default function App() {
               {page === "competitors" && (
                 <Competitors
                   project={project}
+                  keyword={keyword}
+                  keywords={keywords}
+                  onSelectKeyword={(id) => setSelectedKeyword(String(id))}
                   demo={demo}
                   action={action}
                   setModal={setModal}
@@ -1405,17 +1414,26 @@ export default function App() {
             onConsent={saveAIConsent}
             onUsageChange={refreshAIUsage}
             onCancel={() => setModal(null)}
-            onComplete={async (p) => {
+            onComplete={async (p, automaticUpdates) => {
               await load();
               setProjectID(p.id);
               setModal(null);
               setPage("overview");
               notify(
                 tr(
-                  "Your app is ready. Refresh to take your first measurement.",
-                  "Deine App ist bereit. Aktualisiere für die erste Messung.",
+                  "Your app is ready. Taking your first measurements…",
+                  "Deine App ist bereit. Die ersten Messungen laufen…",
                 ),
+                "info",
               );
+              await action("refresh", async () => {
+                if (automaticUpdates) await api("/preferences", { automaticUpdates: true }, "PATCH");
+                const result = await api(`/projects/${p.id}/refresh`, {});
+                notify(tr(
+                  `${result.completed} measurements saved. ${result.errors} fetch errors.`,
+                  `${result.completed} Messungen gespeichert. ${result.errors} Abruffehler.`,
+                ), result.errors ? "info" : "success");
+              });
             }}
           />
         </Modal>
@@ -1436,7 +1454,7 @@ export default function App() {
                 }}
               >
                 <AppIcon app={p.metadata} />
-                <span>
+                <span className="project-copy">
                   <strong>{p.name}</strong>
                   <small>{p.country.toUpperCase()}</small>
                 </span>
@@ -1776,6 +1794,10 @@ function KeywordModal({
 }
 function Auth({ onReady, config, notice, onRetry }) {
   const { tr, locale, setLocale } = useLocale();
+  const [introOpen, setIntroOpen] = useState(() => {
+    try { return native && localStorage.getItem("rankwisp-introduction-v1") !== "seen"; }
+    catch { return native; }
+  });
   const authController = useRef(null);
   useEffect(() => () => authController.current?.abort(), []);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -1841,13 +1863,17 @@ function Auth({ onReady, config, notice, onRetry }) {
         invite,
         platform: ios ? "ios" : native ? "desktop" : "web",
       });
-      await onReady();
+      await onReady(register);
     } catch (e) {
       setError(errorText(e.message, locale));
     } finally {
       setBusy(false);
     }
   }
+  if (introOpen) return <Welcome onComplete={() => {
+    try { localStorage.setItem("rankwisp-introduction-v1", "seen"); } catch {}
+    setIntroOpen(false);
+  }} />;
   return (
     <main className="auth-page">
       <a className="auth-brand" href={"/" + locale}>
@@ -1919,6 +1945,7 @@ function Auth({ onReady, config, notice, onRetry }) {
           variant="secondary"
           onClick={google}
           loading={busy}
+          disabled={config.googleConfigured === false}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -1952,8 +1979,8 @@ function Auth({ onReady, config, notice, onRetry }) {
           <p className="auth-provider-note">
             {config.authProvider === "google"
               ? tr(
-                  "Google sign-in is temporarily unavailable. Please try again later or contact support.",
-                  "Google-Anmeldung ist vorübergehend nicht verfügbar. Versuche es später oder kontaktiere den Support.",
+                  "Google sign-in has not been enabled for this service yet. Contact support for access.",
+                  "Google-Anmeldung ist für diesen Dienst noch nicht freigeschaltet. Kontaktiere den Support für Zugang.",
                 )
               : tr(
                   "Google sign-in is not available yet. You can use email below.",
@@ -2041,6 +2068,7 @@ function Auth({ onReady, config, notice, onRetry }) {
           {tr("Take a look around first", "Zuerst einen Blick hineinwerfen")}{" "}
           <ArrowUpRight size={14} />
         </a>
+        <button className="text-button" onClick={() => setIntroOpen(true)}>{tr("A quick introduction", "Eine kurze Einführung")}</button>
         <p className="auth-fine">
           {tr(
             "Development preview. Purchases are not yet open.",
@@ -2052,7 +2080,14 @@ function Auth({ onReady, config, notice, onRetry }) {
     </main>
   );
 }
-function Competitors({ project, demo, action }) {
+function Competitors({
+  project,
+  keyword,
+  keywords,
+  onSelectKeyword,
+  demo,
+  action,
+}) {
   const { tr, locale, number, date } = useLocale();
   const [editing, setEditing] = useState(false),
     [query, setQuery] = useState(""),
@@ -2081,129 +2116,154 @@ function Competitors({ project, demo, action }) {
   }
   return (
     <>
-      <div className="competition-intro">
-        <div>
-          <span className="eyebrow">
-            {tr("YOUR CHOSEN CONTEXT", "DEIN GEWÄHLTER KONTEXT")}
-          </span>
-          <h2>{tr("Compare with intention.", "Vergleiche mit Bedacht.")}</h2>
-          <p>
-            {tr(
-              "A smaller, relevant set tells you more than a leaderboard of unrelated apps.",
-              "Eine kleine, relevante Auswahl sagt mehr aus als eine Rangliste unpassender Apps.",
-            )}
-          </p>
-        </div>
+      <div className="competition-intro competition-intro-compact">
+        <p>
+          {tr(
+            "Compare the same keyword across your selected apps.",
+            "Vergleiche dasselbe Keyword für deine gewählten Apps.",
+          )}
+        </p>
         <Button onClick={() => setEditing(true)}>
           <Plus size={16} />
           {tr("Review selection", "Auswahl prüfen")}
         </Button>
       </div>
-      <div className="competitor-grid">
-        {apps.map((a) => {
-          const score = v.values.find((x) => x.id === a.id);
-          return (
-            <article
-              className={"competitor-card " + (a.own ? "own" : "")}
-              key={a.id}
-            >
-              <div className="competitor-card-top">
-                <AppIcon app={a} size={54} />
-                <span className="pill">
-                  {a.own
-                    ? tr("Your app", "Deine App")
-                    : tr("Selected comparison", "Gewählter Vergleich")}
-                </span>
-              </div>
-              <h3>{a.name}</h3>
-              <p>
-                {a.developer ||
-                  tr("Metadata not loaded", "Metadaten nicht geladen")}
-              </p>
-              <StoreLink app={a} country={project.country} />
-              <div className="visibility-number">
-                {score?.share != null
-                  ? number(score.share, {
-                      style: "percent",
-                      maximumFractionDigits: 1,
-                    })
-                  : "—"}
-                <small>
-                  {tr(
-                    "modelled visibility share",
-                    "modellierter Sichtbarkeitsanteil",
+      <KeywordStandings
+        project={project}
+        keyword={keyword}
+        keywords={keywords}
+        onSelectKeyword={onSelectKeyword}
+      />
+      <details className="standings-comparison-details">
+        <summary>
+          <span>
+            <strong>
+              {tr(
+                "App details & comparison model",
+                "App-Details und Vergleichsmodell",
+              )}
+            </strong>
+            <small>
+              {tr(
+                "Metadata, modelled shares and how they are calculated",
+                "Metadaten, modellierte Anteile und ihre Berechnung",
+              )}
+            </small>
+          </span>
+          <ChevronDown size={17} aria-hidden="true" />
+        </summary>
+        <div className="standings-comparison-content">
+          <div className="competitor-grid">
+            {apps.map((a) => {
+              const score = v.values.find((x) => x.id === a.id);
+              return (
+                <article
+                  className={"competitor-card " + (a.own ? "own" : "")}
+                  key={a.id}
+                >
+                  <div className="competitor-card-top">
+                    <AppIcon app={a} size={54} />
+                    <span className="pill">
+                      {a.own
+                        ? tr("Your app", "Deine App")
+                        : tr("Selected comparison", "Gewählter Vergleich")}
+                    </span>
+                  </div>
+                  <h3>{a.name}</h3>
+                  <p>
+                    {a.developer ||
+                      tr("Metadata not loaded", "Metadaten nicht geladen")}
+                  </p>
+                  <StoreLink app={a} country={project.country} />
+                  <div className="visibility-number">
+                    {score?.share != null
+                      ? number(score.share, {
+                          style: "percent",
+                          maximumFractionDigits: 1,
+                        })
+                      : "—"}
+                    <small>
+                      {tr(
+                        "modelled visibility share",
+                        "modellierter Sichtbarkeitsanteil",
+                      )}
+                    </small>
+                  </div>
+                  <div className="share-bar">
+                    <i style={{ width: `${(score?.share || 0) * 100}%` }} />
+                  </div>
+                  <div className="quality-row">
+                    <span>{tr("Public rating", "Öffentliche Bewertung")}</span>
+                    <strong>
+                      {a.rating != null
+                        ? number(a.rating, { maximumFractionDigits: 1 }) + "/5"
+                        : "—"}
+                    </strong>
+                  </div>
+                  <div className="quality-row">
+                    <span>Version</span>
+                    <strong>{a.version || "—"}</strong>
+                  </div>
+                  {a.fetchedAt && (
+                    <p className="small muted">
+                      {tr("Retrieved", "Abgerufen")} {date(a.fetchedAt)}
+                    </p>
                   )}
-                </small>
-              </div>
-              <div className="share-bar">
-                <i style={{ width: `${(score?.share || 0) * 100}%` }} />
-              </div>
-              <div className="quality-row">
-                <span>{tr("Public rating", "Öffentliche Bewertung")}</span>
+                </article>
+              );
+            })}
+          </div>
+          <section className="panel method-panel">
+            <Info size={22} />
+            <div>
+              <h3>
+                {tr(
+                  "A comparison model. Not market share.",
+                  "Ein Vergleichsmodell. Kein Marktanteil.",
+                )}
+              </h3>
+              <p>
+                {tr(
+                  "Each selected app scores 1 ÷ rank per included keyword. Shares divide that score by the total for your selected apps. Keywords have equal weight. Only fresh Core observations without a current error are included. A missing result contributes zero.",
+                  "Jede gewählte App erhält je einbezogenem Keyword 1 ÷ Rang Punkte. Der Anteil ergibt sich aus der Summe aller gewählten Apps. Keywords zählen gleich. Einbezogen werden nur aktuelle Kernbegriffe ohne aktuellen Fehler. Fehlende Treffer zählen null.",
+                )}
+              </p>
+              <p>
                 <strong>
-                  {a.rating != null
-                    ? number(a.rating, { maximumFractionDigits: 1 }) + "/5"
-                    : "—"}
-                </strong>
-              </div>
-              <div className="quality-row">
-                <span>Version</span>
-                <strong>{a.version || "—"}</strong>
-              </div>
-              {a.fetchedAt && (
-                <p className="small muted">
-                  {tr("Retrieved", "Abgerufen")} {date(a.fetchedAt)}
-                </p>
-              )}
-            </article>
-          );
-        })}
-      </div>
-      <section className="panel method-panel">
-        <Info size={22} />
-        <div>
-          <h3>
-            {tr(
-              "A comparison model. Not market share.",
-              "Ein Vergleichsmodell. Kein Marktanteil.",
-            )}
-          </h3>
-          <p>
-            {tr(
-              "Each selected app scores 1 ÷ rank per included keyword. Shares divide that score by the total for your selected apps. Keywords have equal weight. Only fresh Core observations without a current error are included. A missing result contributes zero.",
-              "Jede gewählte App erhält je einbezogenem Keyword 1 ÷ Rang Punkte. Der Anteil ergibt sich aus der Summe aller gewählten Apps. Keywords zählen gleich. Einbezogen werden nur aktuelle Kernbegriffe ohne aktuellen Fehler. Fehlende Treffer zählen null.",
-            )}
-          </p>
-          <p>
-            <strong>{tr("Included keywords", "Einbezogene Keywords")}:</strong>{" "}
-            {v.included.join(", ") ||
-              tr(
-                "None yet. Review keyword groups first.",
-                "Noch keine. Prüfe zuerst die Keyword-Gruppen.",
-              )}
-          </p>
-          <p className="small muted">
-            {tr(
-              "Changing keywords or competitors changes the denominator. It is not organic ranking growth. No download, user or revenue market share is measured.",
-              "Andere Keywords oder Konkurrenten ändern die Berechnungsbasis. Das ist kein organisches Ranking-Wachstum. Download-, Nutzer- und Umsatzmarktanteile werden nicht gemessen.",
-            )}
-          </p>
+                  {tr("Included keywords", "Einbezogene Keywords")}:
+                </strong>{" "}
+                {v.included.join(", ") ||
+                  tr(
+                    "None yet. Review keyword groups first.",
+                    "Noch keine. Prüfe zuerst die Keyword-Gruppen.",
+                  )}
+              </p>
+              <p className="small muted">
+                {tr(
+                  "Changing keywords or competitors changes the denominator. It is not organic ranking growth. No download, user or revenue market share is measured.",
+                  "Andere Keywords oder Konkurrenten ändern die Berechnungsbasis. Das ist kein organisches Ranking-Wachstum. Download-, Nutzer- und Umsatzmarktanteile werden nicht gemessen.",
+                )}
+              </p>
+            </div>
+          </section>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              action("metadata", () =>
+                api(`/projects/${project.id}/metadata`, {}),
+              )
+            }
+          >
+            <RefreshCw size={15} />
+            {tr("Refresh app metadata", "App-Metadaten aktualisieren")}
+          </Button>
+          {project.lastMetadataError && (
+            <div className="notice error">
+              {errorText(project.lastMetadataError, locale)}
+            </div>
+          )}
         </div>
-      </section>
-      <Button
-        variant="secondary"
-        onClick={() =>
-          action("metadata", () => api(`/projects/${project.id}/metadata`, {}))
-        }
-      >
-        <RefreshCw size={15} />
-        {tr("Refresh app metadata", "App-Metadaten aktualisieren")}
-      </Button>
-      {project.lastMetadataError && (
-        <div className="notice error">
-          {errorText(project.lastMetadataError, locale)}
-        </div>
-      )}
+      </details>
       {editing && (
         <Modal
           title={tr("Your comparison set", "Deine Vergleichsauswahl")}

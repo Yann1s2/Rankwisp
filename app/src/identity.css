@@ -20,7 +20,7 @@ a,
 input,
 textarea,
 select {
-  outline-color: var(--oxblood);
+  outline-color: var(--crimson);
 }
 button:focus-visible,
 a:focus-visible,
@@ -28,15 +28,15 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline-color: var(--oxblood);
+  outline-color: var(--crimson);
 }
 .button {
   min-height: 42px;
   border-radius: 13px;
-  background: var(--oxblood);
-  border-color: var(--oxblood);
+  background: var(--ink);
+  border-color: var(--ink);
   font-weight: 650;
-  box-shadow: 0 2px 0 #1e1e2412;
+  box-shadow: 0 2px 0 #2b2d4212;
   transition:
     transform 140ms var(--ease-out),
     background 140ms ease,
@@ -45,22 +45,22 @@ summary:focus-visible {
 .button.secondary {
   background: var(--paper);
   border-color: var(--line);
-  color: var(--navy);
+  color: var(--ink);
 }
 .button.light {
-  background: var(--peach);
-  border-color: var(--peach);
-  color: var(--navy);
+  background: var(--soft);
+  border-color: var(--soft);
+  color: var(--ink);
 }
 .button.ghost {
   background: transparent;
-  color: var(--navy);
+  color: var(--ink);
   box-shadow: none;
 }
 .button.danger {
-  color: var(--oxblood);
-  border-color: #92140c35;
-  background: #92140c0a;
+  color: var(--crimson);
+  border-color: #d8003235;
+  background: var(--paper);
 }
 .icon-button {
   border-radius: 10px;
@@ -68,12 +68,12 @@ summary:focus-visible {
   min-height: 36px;
 }
 .brand {
-  color: var(--navy);
+  color: var(--ink);
   font-weight: 800;
   letter-spacing: -1.2px;
 }
 .brand-dot {
-  color: var(--oxblood);
+  color: var(--red);
 }
 .brand img {
   border-radius: 10px;
@@ -90,19 +90,19 @@ summary:focus-visible {
 }
 .notice {
   border-radius: 13px;
-  background: #ffcf9938;
-  border-color: #ffcf99;
-  color: var(--navy);
+  background: #8d99ae38;
+  border-color: #8d99ae;
+  color: var(--ink);
 }
 .notice.error {
-  background: #92140c08;
-  color: var(--oxblood);
-  border-color: #92140c30;
+  background: var(--paper);
+  color: var(--crimson);
+  border-color: #d8003230;
 }
 .notice.info {
-  background: #111d4a06;
-  border-color: #111d4a20;
-  color: var(--navy);
+  background: #2b2d4206;
+  border-color: #2b2d4220;
+  color: var(--ink);
 }
 input,
 select,
@@ -115,10 +115,10 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--navy);
+  border-color: var(--ink);
 }
 input[type="checkbox"] {
-  accent-color: var(--navy);
+  accent-color: var(--ink);
 }
 .field {
   font-weight: 600;
@@ -128,38 +128,38 @@ input[type="checkbox"] {
 }
 .pill,
 .preview-pill {
-  background: #111d4a08;
-  border-color: #111d4a14;
-  color: var(--navy);
+  background: #2b2d4208;
+  border-color: #2b2d4214;
+  color: var(--ink);
   border-radius: 8px;
 }
 .positive,
 .status.fresh {
-  color: var(--navy);
+  color: var(--ink);
 }
 .status.fresh i {
-  background: var(--navy);
+  background: var(--ink);
 }
 .negative,
 .status.error {
-  color: var(--oxblood);
+  color: var(--crimson);
 }
 .status.error i {
-  background: var(--oxblood);
+  background: var(--crimson);
 }
 .status.stale {
-  color: #86551f;
+  color: #656b7c;
 }
 .status.stale i {
-  background: #b47a34;
+  background: #656b7c;
 }
 .text-button,
 .store-link {
-  color: var(--navy);
+  color: var(--ink);
 }
 .placeholder-icon {
-  background: var(--peach);
-  color: var(--navy);
+  background: var(--soft);
+  color: var(--ink);
 }
 .empty {
   padding: 28px;
@@ -198,7 +198,7 @@ input[type="checkbox"] {
   content: "";
   width: 80px;
   height: 3px;
-  background: var(--peach);
+  background: var(--soft);
   border-radius: 3px;
   animation: loading-pulse 1s ease-in-out infinite alternate;
 }
@@ -214,7 +214,7 @@ input[type="checkbox"] {
   overflow: hidden;
   display: grid;
   grid-template-columns: 218px minmax(0, 1fr);
-  background: var(--cream);
+  background: var(--canvas);
 }
 .sidebar {
   position: relative;
@@ -252,7 +252,7 @@ input[type="checkbox"] {
   border: 1px solid var(--line);
   border-radius: 13px;
   gap: 10px;
-  background: var(--cream);
+  background: var(--paper);
   margin-bottom: 18px;
 }
 .sidebar-nav {
@@ -269,23 +269,23 @@ input[type="checkbox"] {
 }
 .sidebar-nav button.active,
 .sidebar-setting.active {
-  background: var(--navy);
-  color: var(--cream);
-  box-shadow: 0 3px 0 #1e1e2410;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 3px 0 #2b2d4210;
 }
 .sidebar-nav button.active .new-dot {
-  background: var(--peach);
+  background: var(--soft);
 }
 .new-dot {
-  background: var(--oxblood);
+  background: var(--crimson);
 }
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 20px;
 }
 .trial-card {
-  background: var(--peach);
-  border: 1px solid #1e1e2415;
+  background: var(--soft);
+  border: 1px solid #2b2d4215;
   border-radius: 16px;
   padding: 15px;
   margin: 0 2px 13px;
@@ -295,15 +295,15 @@ input[type="checkbox"] {
 }
 .trial-card strong {
   font-size: 12px;
-  color: var(--navy);
+  color: var(--ink);
 }
 .trial-card p {
   font-size: 11px;
   margin: 5px 0 12px;
-  color: var(--navy);
+  color: var(--ink);
 }
 .trial-card button {
-  color: var(--navy);
+  color: var(--ink);
   font-size: 11px;
 }
 .account-chip {
@@ -312,8 +312,8 @@ input[type="checkbox"] {
   border-top: 1px solid var(--line);
 }
 .account-chip > span {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  color: var(--paper);
   width: 31px;
   height: 31px;
   border-radius: 11px;
@@ -342,7 +342,7 @@ input[type="checkbox"] {
   position: relative;
   height: 62px;
   padding: 0 28px;
-  background: var(--cream);
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
 .app-header .muted {
@@ -358,12 +358,14 @@ input[type="checkbox"] {
   flex: none;
   padding: 6px 28px;
   font-size: 10px;
-  background: #ffcf9940;
-  color: var(--navy);
-  border-bottom: 1px solid #ffcf9970;
+  background: #8d99ae40;
+  color: var(--ink);
+  border-bottom: 1px solid #8d99ae70;
 }
 .demo-banner a {
-  color: var(--oxblood);
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .workspace-main {
   position: relative;
@@ -435,20 +437,20 @@ input[type="checkbox"] {
 .metric svg {
   width: 16px;
   height: 16px;
-  color: var(--navy);
+  color: var(--ink);
 }
 .metric:first-child {
-  background: var(--navy);
-  border-color: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
 }
 .metric:first-child > div,
 .metric:first-child p,
 .metric:first-child svg {
-  color: var(--peach);
+  color: var(--soft);
 }
 .metric:first-child > strong {
-  color: var(--cream);
+  color: var(--paper);
 }
 .dashboard-columns {
   display: grid;
@@ -503,8 +505,8 @@ input[type="checkbox"] {
   font-size: 11px;
 }
 .segmented {
-  background: #111d4a07;
-  border: 1px solid #111d4a10;
+  background: #2b2d4207;
+  border: 1px solid #2b2d4210;
   padding: 3px;
   border-radius: 9px;
 }
@@ -514,14 +516,14 @@ input[type="checkbox"] {
   border-radius: 6px;
 }
 .segmented button.selected {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  color: var(--paper);
   box-shadow: none;
 }
 .next-card {
   position: relative;
-  background: var(--peach);
-  border: 1px solid #1e1e2410;
+  background: var(--soft);
+  border: 1px solid #2b2d4210;
   border-radius: 18px;
   padding: 18px;
   display: flex;
@@ -530,7 +532,7 @@ input[type="checkbox"] {
 }
 .next-tag {
   font-size: 8px !important;
-  color: var(--navy);
+  color: var(--ink);
   letter-spacing: 1px;
 }
 .next-card h2 {
@@ -539,21 +541,21 @@ input[type="checkbox"] {
   letter-spacing: -0.5px;
   margin: 5px 0 9px;
   max-width: none;
-  color: var(--navy);
+  color: var(--ink);
 }
 .next-card p {
   font-size: 11px !important;
   margin-bottom: 13px;
-  color: var(--navy);
+  color: var(--ink);
 }
 .next-card .button {
   font-size: 11px;
   padding: 9px;
   min-height: 38px;
   margin-top: auto;
-  background: var(--navy);
-  border-color: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
 }
 .next-card small {
   display: none;
@@ -582,7 +584,7 @@ input[type="checkbox"] {
   font-size: 11px !important;
 }
 .quality-row strong {
-  color: var(--navy) !important;
+  color: var(--ink) !important;
 }
 .page-overview .dashboard-secondary .panel-heading p {
   display: none;
@@ -600,7 +602,7 @@ table {
 th {
   font-size: 10px !important;
   white-space: nowrap;
-  background: #111d4a03;
+  background: #2b2d4203;
   color: var(--muted) !important;
 }
 td {
@@ -608,8 +610,8 @@ td {
   padding-bottom: 11px;
 }
 .keyword-symbol {
-  background: #111d4a08;
-  color: var(--navy);
+  background: #2b2d4208;
+  color: var(--ink);
   border-radius: 7px;
 }
 .keyword-link {
@@ -669,8 +671,8 @@ td {
   background: var(--paper);
 }
 .competitor-card.own {
-  border-color: var(--navy);
-  background: #111d4a05;
+  border-color: var(--ink);
+  background: #2b2d4205;
 }
 .competitor-card h3 {
   font-size: 17px;
@@ -683,19 +685,19 @@ td {
 }
 .visibility-number {
   font-size: 36px;
-  color: var(--navy);
+  color: var(--ink);
   margin: 17px 0 10px;
 }
 .share-bar {
-  background: #111d4a10;
+  background: #2b2d4210;
 }
 .share-bar i {
-  background: var(--navy);
+  background: var(--ink);
 }
 .method-panel {
   padding: 17px;
   margin-top: 17px;
-  background: #ffcf992c;
+  background: #8d99ae2c;
 }
 .method-panel p {
   font-size: 11px;
@@ -726,23 +728,23 @@ td {
   padding: 13px;
   font-size: 12px;
   border-radius: 13px;
-  background: var(--cream);
+  background: var(--paper);
 }
 .insight-options button.selected {
-  border-color: var(--navy);
-  background: #111d4a08;
-  color: var(--navy);
+  border-color: var(--ink);
+  background: #2b2d4208;
+  color: var(--ink);
 }
 .check-field {
   font-size: 12px;
 }
 .advice-result {
-  background: var(--cream);
+  background: var(--paper);
   border-radius: 13px;
   padding: 17px;
 }
 .insights-layout > .quiet-panel {
-  background: #ffcf9938;
+  background: #8d99ae38;
 }
 .settings-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -759,7 +761,7 @@ td {
   font-size: 12px;
 }
 .license-summary {
-  background: var(--peach);
+  background: var(--soft);
   border-radius: 12px;
   padding: 13px;
 }
@@ -775,12 +777,12 @@ dialog {
   padding: 24px;
   max-height: calc(100dvh - 40px);
   background: var(--paper);
-  box-shadow: 0 22px 90px #111d4a26;
+  box-shadow: 0 22px 90px #2b2d4226;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 dialog::backdrop {
-  background: #111d4a55;
+  background: #2b2d4255;
   backdrop-filter: blur(3px);
 }
 .modal-heading {
@@ -806,7 +808,7 @@ dialog::backdrop {
   z-index: 1;
 }
 .step-track i.complete {
-  background: var(--oxblood);
+  background: var(--crimson);
 }
 .app-results {
   max-height: 310px;
@@ -822,24 +824,24 @@ dialog::backdrop {
   font-size: 11px;
 }
 .selected-app {
-  border-color: var(--navy);
-  background: #111d4a05;
+  border-color: var(--ink);
+  background: #2b2d4205;
 }
 .rival-option {
   border-radius: 13px;
   background: var(--paper);
 }
 .rival-option.selected {
-  border-color: var(--navy);
-  background: #111d4a04;
+  border-color: var(--ink);
+  background: #2b2d4204;
 }
 .selected .checkbox {
-  background: var(--navy);
-  border-color: var(--navy);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 .onboarding-tip {
-  background: #ffcf9940;
-  border-color: #ffcf99;
+  background: #8d99ae40;
+  border-color: #8d99ae;
   padding: 18px;
 }
 .mobile-tabbar {
@@ -855,7 +857,7 @@ dialog::backdrop {
   gap: 7vw;
   align-items: center;
   overflow-y: auto;
-  background: var(--cream);
+  background: var(--paper);
 }
 .auth-brand {
   top: 30px;
@@ -872,7 +874,7 @@ dialog::backdrop {
   font-size: clamp(37px, 4.6vw, 64px);
   letter-spacing: -2.7px;
   line-height: 1.04;
-  color: var(--navy);
+  color: var(--ink);
   margin: 15px 0 19px;
 }
 .auth-story > p {
@@ -885,7 +887,7 @@ dialog::backdrop {
   border-radius: 24px;
   border: 1px solid var(--line);
   background: var(--paper);
-  box-shadow: 6px 6px 0 #111d4a08;
+  box-shadow: 6px 6px 0 #2b2d4208;
 }
 .auth-icon {
   background: transparent;
@@ -905,8 +907,8 @@ dialog::backdrop {
   width: 100%;
   min-height: 48px;
   font-size: 14px;
-  border: 1.5px solid var(--navy) !important;
-  box-shadow: 0 3px 0 var(--navy) !important;
+  border: 1.5px solid var(--ink) !important;
+  box-shadow: 0 3px 0 var(--ink) !important;
 }
 .google-button > svg {
   flex: none;
@@ -982,7 +984,7 @@ dialog::backdrop {
 }
 /* Marketing shares the same identity, with an editorial rhythm rather than app-sized cards. */
 .marketing {
-  background: var(--cream);
+  background: var(--paper);
 }
 .site-header {
   max-width: 1280px;
@@ -1006,7 +1008,7 @@ dialog::backdrop {
 }
 .hero h1 em,
 .section-intro h2 em {
-  color: var(--oxblood);
+  color: var(--crimson);
   font-family: Georgia, serif;
   font-weight: 500;
 }
@@ -1016,23 +1018,23 @@ dialog::backdrop {
   line-height: 1.7;
 }
 .hero-eyebrow {
-  background: #ffcf9960;
-  border-color: #ffcf99;
-  color: var(--navy);
+  background: #8d99ae60;
+  border-color: #8d99ae;
+  color: var(--ink);
 }
 .hero-eyebrow > span:first-child {
-  background: var(--oxblood);
+  background: var(--crimson);
 }
 .hero-reassurance {
   color: var(--muted);
   font-size: 11px;
 }
 .hero-reassurance svg {
-  color: var(--oxblood);
+  color: var(--crimson);
 }
 .product-stage {
-  background: #111d4a08;
-  border: 1px solid #111d4a18;
+  background: #2b2d4208;
+  border: 1px solid #2b2d4218;
   border-radius: 23px;
   padding: 17px;
   max-width: 1140px;
@@ -1040,18 +1042,18 @@ dialog::backdrop {
 .product-preview {
   border-radius: 15px;
   border-color: var(--line);
-  box-shadow: 0 7px 25px #111d4a0d;
+  box-shadow: 0 7px 25px #2b2d420d;
 }
 .product-preview > aside {
   background: var(--paper);
 }
 .preview-main,
 .preview-content {
-  background: var(--cream);
+  background: var(--paper);
 }
 .preview-nav.active {
-  color: var(--cream);
-  background: var(--navy);
+  color: var(--paper);
+  background: var(--ink);
 }
 .preview-metrics > div {
   border-color: var(--line);
@@ -1062,34 +1064,34 @@ dialog::backdrop {
   color: var(--muted);
 }
 .preview-metrics > div:first-child {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  color: var(--paper);
 }
 .preview-metrics > div:first-child strong,
 .preview-metrics > div:first-child span,
 .preview-metrics > div:first-child small {
-  color: var(--cream);
+  color: var(--paper);
 }
 .preview-next {
-  background: var(--peach);
-  color: var(--navy);
+  background: var(--soft);
+  color: var(--ink);
 }
 .preview-next h3,
 .preview-next p {
-  color: var(--navy);
+  color: var(--ink);
 }
 .preview-next .mini-button {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  color: var(--paper);
 }
 .preview-side-bottom {
-  background: var(--peach);
-  color: var(--navy);
+  background: var(--soft);
+  color: var(--ink);
 }
 .mini-button {
   border-color: var(--line);
-  background: var(--cream);
-  color: var(--navy);
+  background: var(--paper);
+  color: var(--ink);
 }
 .stage-label,
 .small-label,
@@ -1115,7 +1117,7 @@ dialog::backdrop {
   font-size: 20px;
 }
 .feature-number {
-  color: var(--oxblood);
+  color: var(--crimson);
 }
 .platform-line {
   padding: 24px 20px 38px;
@@ -1124,68 +1126,68 @@ dialog::backdrop {
   color: var(--muted);
 }
 .onboarding-illustration {
-  background: var(--peach);
-  border-color: #111d4a25;
+  background: var(--soft);
+  border-color: #2b2d4225;
   border-radius: 22px;
-  box-shadow: 5px 5px 0 #111d4a10;
+  box-shadow: 5px 5px 0 #2b2d4210;
 }
 .illustration-search,
 .illustration-result {
   background: var(--paper);
-  border-color: #111d4a30;
-  color: var(--navy);
+  border-color: #2b2d4230;
+  color: var(--ink);
 }
 .illustration-result strong {
-  color: var(--navy);
+  color: var(--ink);
 }
 .selected-check {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  color: var(--paper);
 }
 .trust-strip {
-  background: #111d4a07;
-  border-color: #111d4a15;
+  background: #2b2d4207;
+  border-color: #2b2d4215;
   border-radius: 18px;
 }
 .trust-strip h2,
 .trust-strip > svg {
-  color: var(--navy);
+  color: var(--ink);
 }
 .trust-strip p {
   color: var(--muted);
 }
 .pricing-card {
   background: var(--paper);
-  border: 1.5px solid var(--navy);
+  border: 1.5px solid var(--ink);
   border-radius: 23px;
-  box-shadow: 6px 6px 0 var(--peach);
+  box-shadow: 6px 6px 0 var(--soft);
 }
 .price {
-  color: var(--navy);
+  color: var(--ink);
 }
 .pricing-card li svg {
-  color: var(--oxblood);
+  color: var(--crimson);
 }
 .pricing-top .pill {
-  background: var(--peach);
-  color: var(--navy);
+  background: var(--soft);
+  color: var(--ink);
 }
 .closing-section {
-  background: var(--navy);
+  background: var(--ink);
   padding: 55px 20px;
 }
 .closing-section h2 {
-  color: var(--cream);
+  color: var(--paper);
   font-size: 38px;
   max-width: 600px;
 }
 .closing-section > svg {
-  color: var(--peach);
+  color: var(--soft);
 }
 .closing-section .button {
-  background: var(--peach);
-  border-color: var(--peach);
-  color: var(--navy);
+  background: var(--soft);
+  border-color: var(--soft);
+  color: var(--ink);
 }
 .site-footer {
   padding: 35px 30px;
@@ -1195,7 +1197,7 @@ dialog::backdrop {
 }
 .info-page h1 {
   font-size: 42px;
-  color: var(--navy);
+  color: var(--ink);
 }
 .platform-cards article {
   border: 1px solid var(--line);
@@ -1204,39 +1206,39 @@ dialog::backdrop {
 }
 @media (hover: hover) and (pointer: fine) {
   .button:hover {
-    background: #731008;
-    border-color: #731008;
-    box-shadow: 0 3px 0 #1e1e2420;
+    background: #3a3e55;
+    border-color: #3a3e55;
+    box-shadow: 0 3px 0 #2b2d4220;
   }
   .button.secondary:hover {
-    background: var(--cream);
-    border-color: var(--navy);
+    background: var(--paper);
+    border-color: var(--ink);
   }
   .button.light:hover {
-    background: #ffbc72;
-    border-color: #ffbc72;
+    background: #d4dce5;
+    border-color: #d4dce5;
   }
   .button.ghost:hover {
-    background: #111d4a08;
+    background: #2b2d4208;
     border-color: transparent;
   }
   .sidebar-nav button:not(.active):hover,
   .sidebar-setting:not(.active):hover {
-    background: #111d4a07;
-    color: var(--navy);
+    background: #2b2d4207;
+    color: var(--ink);
   }
   .icon-button:hover {
-    background: #111d4a09;
+    background: #2b2d4209;
   }
   .email-disclosure:hover {
-    color: var(--navy);
+    color: var(--ink);
   }
   .next-card .button:hover {
-    background: var(--oxblood);
-    border-color: var(--oxblood);
+    background: var(--crimson);
+    border-color: var(--crimson);
   }
   .google-button:hover {
-    background: var(--cream);
+    background: var(--paper);
     transform: translateY(-1px);
   }
 }
@@ -1675,8 +1677,8 @@ dialog::backdrop {
     font-size: 9px;
   }
   .mobile-tabbar button[aria-current="page"] {
-    background: var(--navy);
-    color: var(--cream);
+    background: var(--ink);
+    color: var(--paper);
   }
   .mobile-tabbar button svg {
     width: 19px;
@@ -1939,10 +1941,10 @@ dialog::backdrop {
   .site-header nav.open {
     background: var(--paper);
     border-color: var(--line);
-    box-shadow: 0 10px 28px #111d4a15;
+    box-shadow: 0 10px 28px #2b2d4215;
   }
   .site-actions .site-menu {
-    background: #111d4a07;
+    background: #2b2d4207;
   }
   .hero {
     padding: 35px 21px 33px;
@@ -2566,7 +2568,7 @@ dialog::backdrop {
   gap: 5px;
   padding: 4px;
   border: 1px solid var(--line);
-  background: #111d4a05;
+  background: #2b2d4205;
   border-radius: 12px;
   margin-bottom: 17px;
   width: fit-content;
@@ -2582,8 +2584,8 @@ dialog::backdrop {
   white-space: nowrap;
 }
 .settings-tabs button[aria-selected="true"] {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--ink);
+  color: var(--paper);
 }
 .settings-grid[data-tab="plan"] .settings-panel:not([data-setting="plan"]),
 .settings-grid[data-tab="preferences"]
@@ -2724,7 +2726,7 @@ h4 {
 }
 .metric:first-child > div,
 .metric:first-child p {
-  color: var(--cream);
+  color: var(--paper);
 }
 .auth-card {
   border-radius: 18px;
@@ -2752,7 +2754,7 @@ h4 {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--paper);
-  color: var(--navy);
+  color: var(--ink);
 }
 .hero h1 {
   font-weight: 550;
@@ -2832,13 +2834,13 @@ h4 {
   font-size: 11px;
   background: var(--paper);
   border-color: var(--line);
-  color: var(--navy);
+  color: var(--ink);
 }
 @media (hover: hover) {
   .next-card .button:hover {
-    background: var(--cream);
-    border-color: var(--navy);
-    color: var(--navy);
+    background: var(--paper);
+    border-color: var(--ink);
+    color: var(--ink);
   }
 }
 @media (min-width: 1200px) and (min-height: 730px) {
@@ -2925,7 +2927,7 @@ h4 {
   justify-content: space-between;
   width: 100%;
   padding: 13px 0;
-  color: var(--navy);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 600;
   text-align: left;
@@ -2956,7 +2958,7 @@ h4 {
   flex: none;
   width: 16px;
   height: 16px;
-  accent-color: var(--navy);
+  accent-color: var(--ink);
 }
 .suggestion-rows {
   display: grid;
@@ -3000,7 +3002,7 @@ h4 {
 }
 .suggestions-message {
   margin-top: 12px !important;
-  color: var(--navy);
+  color: var(--ink);
 }
 .settings-source-link {
   display: inline-flex;
@@ -3022,4 +3024,14 @@ h4 {
 .suggestions-toggle {
   background: transparent;
   border: 0;
+}
+
+/* Keep account controls visible in short desktop windows. */
+@media (min-width: 761px) and (max-height: 680px) {
+  .sidebar .brand-link { margin-bottom: 12px; }
+  .sidebar .project-switch { margin-bottom: 12px; }
+  .sidebar-nav { gap: 3px; }
+  .sidebar .trial-card p { display: none; }
+  .sidebar .trial-card strong { display: block; margin-bottom: 6px; }
+  .sidebar .account-chip small { display: none; }
 }

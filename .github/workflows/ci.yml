@@ -32,5 +32,6 @@ jobs:
       - run: node worker/scripts/startup-smoke.mjs
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npx playwright test --config playwright.marketing.config.js
       - run: NATIVE_API_ORIGIN=https://rank.zhstudio.ch npm run build:native
       - run: npx playwright test --config playwright.native.config.js

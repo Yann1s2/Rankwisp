@@ -1,0 +1,41 @@
+.welcome-page { min-height:100dvh; display:flex; flex-direction:column; padding:32px clamp(24px,5vw,80px) 22px; background:#edf2f4; color:#2b2d42; }
+.welcome-header { display:flex; justify-content:space-between; align-items:center; }
+.welcome-layout { width:min(1100px,100%); flex:1; margin:auto; display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:clamp(32px,6vw,90px); padding:36px 0; }
+.welcome-art { position:relative; height:440px; isolation:isolate; background:#8d99ae40; border:1px solid #2b2d420c; border-radius:36px; overflow:hidden; }
+.welcome-orbit { position:absolute; border:1px solid #2b2d4212; width:340px; height:340px; border-radius:50%; left:50%; top:48%; transform:translate(-50%,-50%); }
+.orbit-two { width:240px; height:240px; }
+.welcome-mark { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%); width:132px; height:132px; display:grid; place-items:center; background:#edf2f4; border:1px solid #2b2d4214; border-radius:30px; box-shadow:0 18px 40px #2b2d420b; transition:transform .65s cubic-bezier(.22,1,.36,1); }
+.welcome-mark img { width:76px; height:76px; object-fit:contain; }
+.welcome-search,.welcome-keyword { position:absolute; display:flex; align-items:center; gap:12px; background:#edf2f4; border:1px solid #2b2d421a; border-radius:14px; padding:16px 19px; font-size:14px; box-shadow:0 12px 28px #2b2d4208; transition:transform .65s cubic-bezier(.22,1,.36,1),opacity .35s; }
+.welcome-search { left:9%; top:49%; width:70%; transform:rotate(-4deg); }
+.welcome-search span { flex:1; }
+.welcome-search > svg:last-child { color:#d80032; }
+.welcome-keyword { right:7%; top:66%; transform:rotate(4deg); }
+.welcome-keyword span { color:#d80032; }
+.welcome-trail { position:absolute; width:90%; bottom:17%; left:5%; height:210px; opacity:0; transition:opacity .35s; overflow:visible; }
+.welcome-trail path { fill:none; stroke:#2b2d42; stroke-width:3; stroke-linecap:round; stroke-dasharray:1; stroke-dashoffset:1; }
+.welcome-trail circle { fill:#d80032; }
+.scene-1 .welcome-mark { transform:translate(-50%,-60%) rotate(-7deg); }
+.scene-1 .welcome-search { transform:translateY(-10px) rotate(0); }
+.scene-1 .welcome-keyword { transform:translateY(-8px) rotate(0); }
+.scene-2 .welcome-mark { transform:translate(-50%,-70%) scale(.8); }
+.scene-2 .welcome-search,.scene-2 .welcome-keyword { transform:translateY(25px); opacity:0; }
+.scene-2 .welcome-trail { opacity:1; }
+.scene-2 .welcome-trail path { animation:welcome-draw 1.15s .1s cubic-bezier(.22,1,.36,1) forwards; }
+.welcome-art-caption { position:absolute; bottom:25px; width:100%; text-align:center; font-size:11px; color:var(--muted); }
+.welcome-steps { display:flex; gap:6px; margin-bottom:24px; }
+.welcome-steps button { padding:12px 0; width:34px; background:none; border:0; cursor:pointer; }
+.welcome-steps span { display:block; height:3px; background:#2b2d4222; border-radius:4px; transition:background .2s; }
+.welcome-steps [aria-current] span { background:#d80032; }
+.welcome-panel { animation:welcome-enter .38s cubic-bezier(.22,1,.36,1) both; min-height:235px; }
+.welcome-panel h1 { font-size:clamp(32px,3.5vw,49px); line-height:1.07; letter-spacing:-1.7px; margin:18px 0; max-width:480px; outline:none; }
+.welcome-panel p { color:#2b2d42b5; font-size:16px; line-height:1.7; max-width:430px; }
+.welcome-actions { display:flex; align-items:center; gap:14px; margin-top:22px; }
+.welcome-actions .button { min-width:180px; justify-content:space-between; padding:15px 20px; background:#2b2d42; }
+.welcome-skip { margin-top:19px; color:var(--muted); font-size:12px; }
+.welcome-footer { text-align:center; color:var(--muted); font-size:11px; }
+@keyframes welcome-enter { from { opacity:0; transform:translateY(13px); } to { opacity:1; transform:translateY(0); } }
+@keyframes welcome-draw { to { stroke-dashoffset:0; } }
+@media(max-width:700px) { .welcome-page { padding:20px 24px; } .welcome-layout { grid-template-columns:1fr; gap:20px; padding:24px 0; width:min(420px,100%); } .welcome-art { height:225px; border-radius:24px; } .welcome-mark { width:80px; height:80px; border-radius:20px; top:27%; } .welcome-mark img { width:48px; height:48px; } .welcome-search,.welcome-keyword { padding:10px 12px; font-size:11px; } .welcome-keyword { top:65%; } .welcome-art-caption { display:none; } .welcome-trail { height:145px; bottom:8%; } .welcome-steps { margin-bottom:8px; } .welcome-panel { min-height:180px; } .welcome-panel h1 { font-size:33px; margin:13px 0; } .welcome-panel p { font-size:14px; } .welcome-actions { margin-top:12px; } .welcome-footer { font-size:10px; } }
+@media(max-height:720px) and (min-width:701px) { .welcome-art { height:340px; } .welcome-layout { padding:20px 0; } }
+@media(prefers-reduced-motion:reduce) { .welcome-page *, .welcome-page *::before { animation:none!important; transition:none!important; } .scene-2 .welcome-trail path { stroke-dashoffset:0; } }
