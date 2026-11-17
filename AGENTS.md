@@ -7,4 +7,5 @@ All demo measurements must be labelled illustrative and isolated from accounts.
 Preserve null ranks, errors, snapshot provenance, timestamps, archives and unknown fields.
 Never invent search volume, revenue, downloads, conversion or market share.
 Run `npm test` and `npm run build` in app after meaningful implementation changes.
-Keep public publishing, payments and store submission disabled until explicit approval.
+Public source publishing and the Cloudflare website are explicitly authorized.
+Keep payments and store submissions disabled until their separate approval and setup.

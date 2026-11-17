@@ -16,7 +16,7 @@ import { useLocale } from "./i18n";
 export function Brand({ compact = false }) {
   return (
     <span className="brand">
-      <img src="/mark.svg" width="34" height="34" alt="" />
+      <img src="/brand/symbol.png" width="34" height="34" alt="" />
       {!compact && (
         <span>
           rankwisp<span className="brand-dot">.</span>
@@ -93,7 +93,7 @@ export function Empty({ icon: Icon = Sun, title, children, action }) {
   return (
     <div className="empty">
       <div className="empty-symbol">
-        <img src="/wisp.svg" width="132" height="118" alt="" />
+        <Icon size={25} strokeWidth={1.5} aria-hidden="true" />
       </div>
       <h3>{title}</h3>
       <p>{children}</p>
@@ -321,13 +321,13 @@ export function Chart({
               x2={x(hover.time)}
               y1={pad.top}
               y2={height - pad.bottom}
-              stroke="#97a58d"
+              stroke="#64616b"
             />
             <circle
               cx={x(hover.time)}
               cy={y(hover.rank)}
               r="5"
-              fill="#294737"
+              fill="#111d4a"
               stroke="white"
               strokeWidth="3"
             />

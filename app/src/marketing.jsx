@@ -8,7 +8,6 @@ import {
   Search,
   ChartNoAxesCombined,
   Users,
-  Sparkles,
   ShieldCheck,
   Sun,
   Plus,
@@ -57,6 +56,13 @@ function MarketingBody({ page }) {
           </a>
           <a href={link("home") + "#pricing"}>{tr("Pricing", "Preis")}</a>
           <a href={link("support")}>{tr("Support", "Support")}</a>
+          <a
+            href="https://github.com/Yann1s2/Rankwisp"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
         </nav>
         <div className="site-actions">
           <a
@@ -87,13 +93,6 @@ function MarketingBody({ page }) {
         {page === "home" ? (
           <>
             <section className="hero">
-              <img
-                className="hero-mascot"
-                src="/wisp.svg"
-                width="240"
-                height="215"
-                alt=""
-              />
               <div className="hero-eyebrow">
                 <span />
                 <span>
@@ -253,7 +252,7 @@ function MarketingBody({ page }) {
                 </article>
                 <article>
                   <div className="feature-number">
-                    03 <Sparkles size={19} />
+                    03 <ArrowUpRight size={19} />
                   </div>
                   <h3>
                     {tr(
@@ -470,10 +469,7 @@ function MarketingBody({ page }) {
                   ))}
                 </ul>
                 <a href="/app/" className="button">
-                  {tr(
-                    "Explore the preview",
-                    "Vorschau entdecken",
-                  )}{" "}
+                  {tr("Explore the preview", "Vorschau entdecken")}{" "}
                   <ArrowRight size={16} />
                 </a>
                 <small>
@@ -585,10 +581,7 @@ function MarketingBody({ page }) {
           </p>
           <span className="small muted">
             © {new Date().getFullYear()} Rankwisp ·{" "}
-            {tr(
-              "Working brand, preview",
-              "Arbeitsmarke, Vorschau",
-            )}
+            {tr("Working brand, preview", "Arbeitsmarke, Vorschau")}
           </span>
         </div>
         <div>
@@ -599,6 +592,13 @@ function MarketingBody({ page }) {
           <a href={link("privacy")}>{tr("Privacy", "Datenschutz")}</a>
           <a href={link("terms")}>{tr("Terms", "Bedingungen")}</a>
           <a href={link("legal")}>{tr("Legal notice", "Impressum")}</a>
+          <a
+            href="https://github.com/Yann1s2/Rankwisp"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {tr("Open source · MIT", "Open Source · MIT")}
+          </a>
         </div>
       </footer>
     </div>
@@ -622,7 +622,7 @@ function ProductPreview() {
           [Search, "Keywords"],
           [ChartNoAxesCombined, tr("Rank history", "Ranking-Verlauf")],
           [Users, tr("Competitors", "Konkurrenz")],
-          [Sparkles, tr("Next moves", "Nächste Schritte")],
+          [ArrowUpRight, tr("Next moves", "Nächste Schritte")],
         ].map(([Icon, title], i) => (
           <div className={"preview-nav " + (!i ? "active" : "")} key={title}>
             <Icon size={14} />
@@ -698,7 +698,7 @@ function ProductPreview() {
             </div>
             <div className="preview-next">
               <span>
-                <Sparkles size={12} />
+                <ArrowUpRight size={12} />
                 {tr("NEXT MOVE", "NÄCHSTER SCHRITT")}
               </span>
               <ArrowUpRight size={34} />

@@ -14,6 +14,9 @@ test("marketing EN/DE, navigation and responsive layout", async ({ page }) => {
     "content",
     "noindex,nofollow",
   );
+  await expect(
+    page.getByRole("link", { name: "Open source · MIT", exact: true }),
+  ).toHaveAttribute("href", "https://github.com/Yann1s2/Rankwisp");
   await page.getByRole("link", { name: "EN", exact: true }).click();
   await expect(
     page.getByRole("heading", {
@@ -78,7 +81,9 @@ test("real backend registration, import, archive, export, AI fallback and sign o
   page,
 }) => {
   await page.goto("/app");
-  await page.getByRole("button", { name: "Continue with email", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Continue with email", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "New here? Start your free trial" })
     .click();
@@ -126,13 +131,11 @@ test("real backend registration, import, archive, export, AI fallback and sign o
       },
     ],
   };
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "synthetic-fixture.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(workspace)),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "synthetic-fixture.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(workspace)),
+  });
   await expect(
     page.getByRole("heading", { name: "Review your import" }),
   ).toBeVisible();
@@ -167,6 +170,9 @@ test("real backend registration, import, archive, export, AI fallback and sign o
 test("onboarding state machine with injected Apple fixtures", async ({
   page,
 }) => {
+  const suggestionFixture = await keywordSuggestionFixture(page, {
+    empty: true,
+  });
   await page.route("**/api/search?*", (route) =>
     route.fulfill({
       json: {
@@ -199,17 +205,6 @@ test("onboarding state machine with injected Apple fixtures", async ({
     route.fulfill({ json: { id: "created-qa" } }),
   );
   await page.goto("/app");
-  await page.getByRole("button", { name: "Continue with email", exact: true }).click();
-  await page
-    .getByRole("button", { name: "New here? Start your free trial" })
-    .click();
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill("onboard-" + Date.now() + "@example.test");
-  await page
-    .getByLabel("Password", { exact: false })
-    .fill("a safe testing password");
-  await page.getByRole("button", { name: "Start my 24 days" }).click();
   await page.getByRole("button", { name: "Find my app" }).click();
   await page.getByRole("textbox", { name: "Find app" }).fill("planner");
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -225,6 +220,24 @@ test("onboarding state machine with injected Apple fixtures", async ({
     page.getByRole("heading", { name: "What should we watch?" }),
   ).toBeVisible();
   await page.getByLabel("Your first keywords").fill("planner, morning routine");
+  await page
+    .getByRole("button", { name: "Keyword suggestions", exact: true })
+    .click();
+  await page
+    .getByLabel("Allow app metadata and keywords", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Suggest keywords", exact: true })
+    .click();
+  await page.getByLabel("Suggestion 1", { exact: true }).fill("daily planning");
+  await page
+    .getByRole("button", { name: "Use selected", exact: false })
+    .click();
+  await expect(page.getByLabel("Your first keywords")).toHaveValue(
+    "planner, morning routine\ndaily planning\nweekly planning\ngentle routine",
+  );
+  expect(suggestionFixture.requests[0].body.appleID).toBe(123456789);
+
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(
     page.getByRole("button", {
@@ -233,52 +246,331 @@ test("onboarding state machine with injected Apple fixtures", async ({
   ).toHaveAttribute("aria-pressed", "true");
 });
 
-test("Google-only configuration and cancelled login work without modern AbortSignal statics", async ({ page }) => {
-  await page.addInitScript(() => { AbortSignal.timeout = undefined; AbortSignal.any = undefined; });
-  await page.route("**/api/config", route => route.fulfill({json:{authProvider:"google",googleConfigured:false}}));
+test("Google-only configuration and cancelled login work without modern AbortSignal statics", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    AbortSignal.timeout = undefined;
+    AbortSignal.any = undefined;
+  });
+  await page.route("**/api/config", (route) =>
+    route.fulfill({
+      json: { authProvider: "google", googleConfigured: false },
+    }),
+  );
   await page.goto("/app?authError=GOOGLE_CANCELLED");
-  await expect(page.getByRole("button", {name:"Continue with Google",exact:true})).toBeVisible();
-  await expect(page.getByRole("button", {name:"Continue with email",exact:true})).toHaveCount(0);
-  await expect(page.getByText("Google sign-in is temporarily unavailable. Please try again later or contact support.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue with Google", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue with email", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Google sign-in is temporarily unavailable. Please try again later or contact support.",
+    ),
+  ).toBeVisible();
   await expect(page).not.toHaveURL(/authError/);
-  expect(await page.locator("body").innerText()).not.toContain("The server is unavailable");
+  expect(await page.locator("body").innerText()).not.toContain(
+    "The server is unavailable",
+  );
 });
 
-test("all app views fit phone, landscape, tablet and short desktop without page overflow", async ({ page }) => {
+test("all app views fit phone, landscape, tablet and short desktop without page overflow", async ({
+  page,
+}) => {
   test.setTimeout(90000);
   await page.goto("/app?demo=1");
-  const views=["Overview","Keywords","Rank history","Competitors","Next moves","Settings"];
-  for (const [width,height] of [[375,667],[390,844],[844,390],[768,1024],[1440,800]]) {
-    await page.setViewportSize({width,height});
-    for(const name of views) {
+  const views = [
+    "Overview",
+    "Keywords",
+    "Rank history",
+    "Competitors",
+    "Next moves",
+    "Settings",
+  ];
+  for (const [width, height] of [
+    [375, 667],
+    [390, 844],
+    [844, 390],
+    [768, 1024],
+    [1440, 800],
+  ]) {
+    await page.setViewportSize({ width, height });
+    for (const name of views) {
       await test.step(`${width}×${height}: ${name}`, async () => {
-      const button=page.getByRole("button",{name,exact:true});
-      if (!(await button.isVisible())) await page.getByRole("button",{name:"Open navigation"}).click();
-      await button.click();
-      await expect.poll(()=>page.evaluate(()=>({x:document.documentElement.scrollWidth<=innerWidth,y:document.documentElement.scrollHeight<=innerHeight}))).toEqual({x:true,y:true});
-      await page.mouse.wheel(1000,1000);
-      expect(await page.evaluate(()=>({x:scrollX,y:scrollY}))).toEqual({x:0,y:0});
+        const button = page.getByRole("button", { name, exact: true });
+        if (!(await button.isVisible()))
+          await page.getByRole("button", { name: "Open navigation" }).click();
+        await button.click();
+        await expect
+          .poll(() =>
+            page.evaluate(() => ({
+              x: document.documentElement.scrollWidth <= innerWidth,
+              y: document.documentElement.scrollHeight <= innerHeight,
+            })),
+          )
+          .toEqual({ x: true, y: true });
+        await page.mouse.wheel(1000, 1000);
+        expect(await page.evaluate(() => ({ x: scrollX, y: scrollY }))).toEqual(
+          { x: 0, y: 0 },
+        );
       });
     }
   }
-  await page.getByRole("tab",{name:"Plan & usage",exact:true}).focus();
+  await page.getByRole("tab", { name: "Plan & usage", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab",{name:"Preferences",exact:true})).toHaveAttribute("aria-selected","true");
+  await expect(
+    page.getByRole("tab", { name: "Preferences", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("End");
-  await expect(page.getByRole("tab",{name:"Account",exact:true})).toHaveAttribute("aria-selected","true");
+  await expect(
+    page.getByRole("tab", { name: "Account", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
 });
 
-test("primary website, authentication and app views pass serious accessibility checks", async ({page}) => {
+test("primary website, authentication and app views pass serious accessibility checks", async ({
+  page,
+}) => {
   test.setTimeout(90000);
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const {default:AxeBuilder}=await import("@axe-core/playwright");
-  const results=[];
-  for(const route of ["/en/","/app","/app?demo=1"]) {
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  const results = [];
+  for (const route of ["/en/", "/app", "/app?demo=1"]) {
     await page.goto(route);
-    if(route.includes("demo")) await expect(page.getByRole("heading",{name:"Your app, at a glance."})).toBeVisible();
-    else if(route==="/app") await expect(page.getByRole("button",{name:"Continue with Google",exact:true})).toBeVisible();
-    const audit=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
-    results.push(...audit.violations.filter(v=>["critical","serious"].includes(v.impact)).map(v=>({route,id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})));
+    if (route.includes("demo"))
+      await expect(
+        page.getByRole("heading", { name: "Your app, at a glance." }),
+      ).toBeVisible();
+    else if (route === "/app")
+      await expect(
+        page.getByRole("button", { name: "Continue with Google", exact: true }),
+      ).toBeVisible();
+    const audit = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    results.push(
+      ...audit.violations
+        .filter((v) => ["critical", "serious"].includes(v.impact))
+        .map((v) => ({
+          route,
+          id: v.id,
+          nodes: v.nodes.map((n) => ({
+            target: n.target,
+            summary: n.failureSummary,
+          })),
+        })),
+    );
   }
   expect(results).toEqual([]);
+});
+
+async function keywordSuggestionFixture(
+  page,
+  { configured = true, response, empty = false } = {},
+) {
+  const { demoWorkspace } = await import("../src/demo.mjs");
+  const workspace = demoWorkspace();
+  if (empty) workspace.projects = [];
+  let consent = false;
+  const requests = [],
+    additions = [];
+  await page.route("**/api/config", (route) =>
+    route.fulfill({ json: { aiConfigured: configured } }),
+  );
+  await page.route("**/api/me", (route) =>
+    route.fulfill({
+      json: {
+        account: { id: "suggestion-fixture", email: "fixture@example.test" },
+        license: {
+          state: "trial",
+          daysRemaining: 24,
+          checksRemaining: 120,
+          aiRemaining: 8,
+        },
+        aiConsent: consent,
+      },
+    }),
+  );
+  await page.route("**/api/workspace", (route) =>
+    route.fulfill({ json: { workspace, revision: "fixture" } }),
+  );
+  await page.route("**/api/preferences", (route) => {
+    consent = route.request().postDataJSON().aiConsent;
+    return route.fulfill({ json: { ok: true } });
+  });
+  await page.route("**/api/keyword-suggestions", (route) => {
+    requests.push({ body: route.request().postDataJSON(), consent });
+    return route.fulfill({
+      json: response || {
+        mode: "ai",
+        model: "gpt-6-luna",
+        cached: false,
+        suggestions: [
+          {
+            keyword: "daily planner",
+            reason: "Existing keyword, should be filtered",
+          },
+          {
+            keyword: "weekly planning",
+            reason: "Matches the public planning description",
+          },
+          {
+            keyword: "gentle routine",
+            reason: "A focused alternative to review",
+          },
+        ],
+      },
+    });
+  });
+  await page.route("**/api/projects/demo/keywords", (route) => {
+    additions.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ok: true } });
+  });
+  return { requests, additions };
+}
+
+test("keyword ideas require consent, remain editable drafts and save only on explicit confirmation", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const fixture = await keywordSuggestionFixture(page);
+  await page.goto("/app/");
+  await page.getByRole("button", { name: "Keywords", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Suggest keywords", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  const generate = dialog.getByRole("button", {
+    name: "Suggest keywords",
+    exact: true,
+  });
+  await expect(generate).toBeDisabled();
+  await dialog
+    .getByLabel("Allow app metadata and keywords", { exact: false })
+    .check();
+  await generate.click();
+  await expect(dialog.getByLabel("Suggestion 1", { exact: true })).toHaveValue(
+    "weekly planning",
+  );
+  expect(fixture.requests[0].consent).toBe(true);
+  expect(fixture.requests[0].body).toMatchObject({
+    appleID: 100000001,
+    country: "us",
+    locale: "en",
+  });
+  expect(fixture.requests[0].body.existingKeywords).toContain("daily planner");
+  await dialog
+    .getByLabel("Suggestion 1", { exact: true })
+    .fill("focused planning");
+  await dialog.getByLabel("Select suggestion 2", { exact: true }).uncheck();
+  const draft = dialog.getByLabel("What might someone search for?", {
+    exact: false,
+  });
+  await draft.fill("My own wording\nweekly review");
+  await page.screenshot({
+    path: "../screenshots/keyword-suggestions-desktop.png",
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 375, height: 667 });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: "../screenshots/keyword-suggestions-mobile.png",
+    animations: "disabled",
+  });
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  const audit = await new AxeBuilder({ page })
+    .include("dialog")
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(
+    audit.violations
+      .filter((v) => ["critical", "serious"].includes(v.impact))
+      .map((v) => v.id),
+  ).toEqual([]);
+  await dialog
+    .getByRole("button", { name: "Use selected", exact: false })
+    .click();
+  await expect(draft).toHaveValue(
+    "My own wording\nweekly review\nfocused planning",
+  );
+  expect(fixture.additions).toEqual([]);
+  await dialog.getByLabel("Suggestion 1", {exact:true}).fill("Ｍｙ　ｏｗｎ　ｗｏｒｄｉｎｇ");
+  await dialog.getByLabel("Select suggestion 1", {exact:true}).check();
+  await dialog.getByRole("button", {name:"Use selected",exact:false}).click();
+  await expect(draft).toHaveValue("My own wording\nweekly review\nfocused planning");
+  await dialog
+    .getByRole("button", { name: "Add keywords", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  expect(fixture.additions).toEqual([
+    { text: "My own wording\nweekly review\nfocused planning" },
+  ]);
+});
+
+test("keyword suggestions unavailable never block or replace manual input", async ({
+  page,
+}) => {
+  const fixture = await keywordSuggestionFixture(page, { configured: false });
+  await page.goto("/app/");
+  await page.getByRole("button", { name: "Keywords", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Suggest keywords", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText(
+      "AI suggestions are not available yet. You can enter keywords manually.",
+    ),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Suggest keywords", exact: true }),
+  ).toBeDisabled();
+  await dialog
+    .getByLabel("What might someone search for?", { exact: false })
+    .fill("manual keyword");
+  await dialog
+    .getByRole("button", { name: "Add keywords", exact: true })
+    .click();
+  expect(fixture.requests).toEqual([]);
+  expect(fixture.additions).toEqual([{ text: "manual keyword" }]);
+});
+
+test("keyword service failures preserve the reviewed manual draft", async ({
+  page,
+}) => {
+  await keywordSuggestionFixture(page, {
+    response: {
+      mode: "unavailable",
+      suggestions: [],
+      reason: "AI_UNAVAILABLE",
+    },
+  });
+  await page.goto("/app/");
+  await page.getByRole("button", { name: "Keywords", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Suggest keywords", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  const draft = dialog.getByLabel("What might someone search for?", {
+    exact: false,
+  });
+  await draft.fill("keep this wording");
+  await dialog
+    .getByLabel("Allow app metadata and keywords", { exact: false })
+    .check();
+  await dialog
+    .getByRole("button", { name: "Suggest keywords", exact: true })
+    .click();
+  await expect(dialog.getByRole("status")).toContainText(
+    "Suggestions are temporarily unavailable",
+  );
+  await expect(draft).toHaveValue("keep this wording");
+  await expect(
+    dialog.getByRole("button", { name: "Add keywords", exact: true }),
+  ).toBeEnabled();
 });

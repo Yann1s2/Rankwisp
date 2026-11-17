@@ -1,9 +1,12 @@
 # Rankwisp
 
 Working brand selected 17 November 2026. Rank + wisp: small signals that reveal a
-clearer direction. Lowercase wordmark, dark pine, soft neutral surfaces and restrained
-lime accents. The mark combines rising, rounded observations and a small signal dot.
-It is original SVG artwork, not a third-party logo. System fonts avoid remote tracking.
+clearer direction. The revised identity is intentionally minimal: a lowercase wordmark,
+an abstract navy rising-r symbol, warm cream surfaces and restrained peach/red accents.
+The user rejected the earlier cartoon character; no mascot remains in the application.
+The five exact UI colors are documented in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
+System fonts avoid remote tracking. Generated original artwork and exact prompts are
+preserved in [brand/ASSETS.md](brand/ASSETS.md).
 
 Initial alternative Ranklume was rejected after finding RANKLUME PRIVATE LIMITED
 (company directory result) and a registered ranklume.com (Verisign RDAP HTTP 200).
@@ -21,6 +24,9 @@ WIPO recommends national/regional searches in addition to its global database:
 https://www.wipo.int/en/web/global-brand-database/index
 Live trademark-register clearance was not completed; the name remains provisional.
 
-Assets: app/public/mark.svg (scalable master), icon.png (1024 px), social.png (social).
-Tokens: app/src/tokens.css. Motion: 160–240 ms opacity/transform, interruptible controls,
-reduced-motion support; no attention loops or fabricated progress.
+Assets: `app/public/brand/symbol.png` (transparent symbol), `app/public/icon.png`
+(opaque 1024 px icon), `app/public/favicon.png`, `app/public/social.png`.
+Original generated sources are preserved in `docs/brand`; `app/scripts/assets.mjs`
+exports web and native sizes reproducibly. Tokens: `app/src/tokens.css` and
+`app/src/identity.css`. Motion respects reduced motion; no attention loops or
+fabricated progress.

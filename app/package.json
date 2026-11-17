@@ -25,7 +25,8 @@
     "worker:check": "wrangler deploy --dry-run --config worker/wrangler.jsonc",
     "worker:deploy": "wrangler deploy --config worker/wrangler.jsonc --env=\"\"",
     "worker:preview": "wrangler deploy --config worker/wrangler.jsonc --env preview",
-    "test:worker": "vitest run --config worker/vitest.config.mjs"
+    "test:worker": "vitest run --config worker/vitest.config.mjs",
+    "licenses": "node scripts/notices.mjs"
   },
   "dependencies": {
     "@apple/app-store-server-library": "^2.0.0",
@@ -86,6 +87,20 @@
           "rankwisp"
         ]
       }
+    ],
+    "extraResources": [
+      {
+        "from": "../LICENSE",
+        "to": "licenses/LICENSE"
+      },
+      {
+        "from": "../THIRD_PARTY_NOTICES.md",
+        "to": "licenses/THIRD_PARTY_NOTICES.md"
+      },
+      {
+        "from": "../THIRD_PARTY_LICENSES.txt",
+        "to": "licenses/THIRD_PARTY_LICENSES.txt"
+      }
     ]
   },
   "overrides": {
@@ -93,5 +108,11 @@
   },
   "engines": {
     "node": ">=22.20.0"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yann1s2/Rankwisp.git"
+  },
+  "homepage": "https://rank.zhstudio.ch"
 }

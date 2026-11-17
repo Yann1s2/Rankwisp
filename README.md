@@ -1,17 +1,26 @@
 # Rankwisp
 
 App-Store-Recherche und Keyword-Verläufe für Web, macOS, Windows und iOS. Gemeinsame
-React-Oberfläche mit eigenständiger Wisp-Marke, englischer/deutscher Website und
+React-Oberfläche mit reduzierter Rankwisp-Marke, englischer/deutscher Website und
 Cloudflare-Backend. Bestehende Rankblick-Installationen und persönliche Daten wurden
 nicht verändert oder automatisch hochgeladen.
 
 - Website/App: https://rank.zhstudio.ch · `/app?demo=1` zeigt ausdrücklich Beispieldaten.
-- Privates Repository: https://github.com/Yann1s2/Rankwisp
+- Open Source (MIT): https://github.com/Yann1s2/Rankwisp
 - Support: **info@zhstudio.ch**
 - Aktueller Prüfstand und verbleibende Freigaben: [QA](docs/QA.md).
 - Betrieb und Deployment: [Operations](docs/OPERATIONS.md).
 - Google-Einrichtung und Architektur: [Backend](docs/CLOUDFLARE-BACKEND.md).
 - Gestaltung: [Designsystem](docs/DESIGN-SYSTEM.md).
+
+## Open Source
+
+Weboberfläche, native Clients, Backend, Tests und Deployment-Konfiguration sind unter
+der [MIT-Lizenz](LICENSE) offen verfügbar. Du kannst sie prüfen, verändern und selbst
+hosten. Beiträge: [CONTRIBUTING.md](CONTRIBUTING.md). Sicherheitsmeldungen und die
+Trennung von Quellcode und Secrets: [SECURITY.md](SECURITY.md). Abhängigkeiten behalten
+ihre [eigenen Lizenzen](THIRD_PARTY_NOTICES.md). Der gehostete Dienst und seine
+Anbieterkosten sind vom frei verfügbaren Quellcode getrennt.
 
 ## Funktionen
 
@@ -30,8 +39,11 @@ kein echtes Konto. Der lokale Node-Server unterstützt weiterhin seine bisherige
 E-Mail-Konten; Produktionskonten nutzen Google. Datenmigration erfolgt bewusst per
 Export/Import, nicht durch Übernahme unbestätigter E-Mail-Adressen.
 
-Optionale KI mit Luna, Einwilligung und Kostenbudgets; Stripe-Einmalkauf und verifizierte
-StoreKit-Integration sind vorbereitet. Ohne Anbieter-/Händlerkonfiguration sind diese
+Optionale KI mit Luna, Einwilligung und Kostenbudgets. Keyword-Vorschläge nutzen die
+öffentlichen App-Angaben und das gewählte Store-Land. Vorschläge sind einzeln auswählbar
+und editierbar; erst bestätigte Entwürfe werden gespeichert, ohne erfundene Messwerte.
+Ein neuer OpenAI-Key und ein echter Modelltest sind noch erforderlich. Stripe-Einmalkauf
+und verifizierte StoreKit-Integration sind vorbereitet. Ohne Anbieter-/Händlerkonfiguration sind diese
 Dienste deaktiviert. 24 Tage Testphase, keine automatische Belastung. CHF 49 ist weiterhin
 der Preisvorschlag; Betreiberangaben und Rechtsfreigabe sind offen. Website bleibt noindex.
 Private App-Store-Connect-Berichte bleiben im erhaltenen Swift-Bestand `legacy` und sind
@@ -41,7 +53,7 @@ noch nicht in den gemeinsamen Client portiert.
 
 | Pfad | Verantwortung |
 | --- | --- |
-| `app/src`, `app/public` | App, Website, Lokalisierung, Designsystem, Originalillustration/Icon |
+| `app/src`, `app/public` | App, Website, Lokalisierung, Designsystem, abstraktes Markenzeichen/Icon |
 | `app/worker` | Workers, D1-Identitäten, SQLite Durable Objects, Google OIDC, Alarme |
 | `app/functions` | Same-origin Pages-API über Worker-Service-Binding |
 | `app/server`, `app/shared` | Gemeinsame Fachlogik, lokale Express/SQLite-Alternative, Datenvertrag |

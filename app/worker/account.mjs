@@ -9,7 +9,7 @@ import {
   DAY,
   parseAppQuery,
 } from "../shared/domain.mjs";
-import { advise } from "../server/ai.mjs";
+import { advise, suggestKeywords } from "../server/ai.mjs";
 import {
   applyPayment,
   applyAppleTrial,
@@ -57,6 +57,11 @@ export class AccountStore extends DurableObject {
         req.account = account;
         next();
       },
+      keywordSuggestions: (db, account, input, options) =>
+        suggestKeywords(db, account, input, {
+          ...options,
+          reserveGlobal: (amount) => coordinator().reserveAI(amount),
+        }),
       ai: (db, account, project, options) =>
         advise(db, account, project, {
           ...options,

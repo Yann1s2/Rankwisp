@@ -23,8 +23,8 @@ bounded requests, actionable errors and retry. Restarting localhost alone is ins
 3. Add complete Google OIDC with PKCE/state/nonce/signature validation and native system-
    browser PKCE exchange. Preserve existing password accounts and import/export.
 4. Redesign all screens around the five supplied colors. Compact adaptive app shell,
-   meaningful content scroll regions, original playful illustration/icon, accessibility.
-5. Configure private GitHub source, Pages Git integration and preview builds; same-origin
+   meaningful content scroll regions and accessibility; later revised to a minimal abstract identity.
+5. Configure GitHub source (public MIT after the user's explicit open-source request), Pages Git integration and preview builds; same-origin
    Pages API facade through Worker service binding, explicit environment isolation.
 6. Test Node data logic, actual workerd bindings, cryptographic auth, all UI states,
    responsive dimensions, native packaging and live deployment connectivity.

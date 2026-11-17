@@ -184,9 +184,9 @@ The bundled `wrangler dev` smoke test starts real workerd with local D1 and veri
 it complements the Vitest suite, whose transformed module context did not catch that error.
 
 - Production: `https://rankwisp-api.yannis-66678.workers.dev`, version
-  `86de90cf-9f7f-4aea-8760-b1e9dd2cebc8`.
+  `85f298b7-e54c-46d2-93f6-0f523989e9e8`.
 - Preview: `https://rankwisp-api-preview.yannis-66678.workers.dev`, version
-  `df3670bf-5ddf-46ac-9f7c-04de376422fb`.
+  `f07d969c-9ddc-44a7-8c4d-c79f7ee2f20b`.
 - Actual HTTPS health/config returned 200 in both; production rejects hostile and branch
   origins with 403, preview accepts the exact project branch pattern, unauthenticated
   workspace returns 401. Google/AI/payment availability correctly remains false.
@@ -210,3 +210,69 @@ Both the custom origin and `https://rankwisp.pages.dev` are allowed API origins;
 OAuth browser flow canonicalizes to the custom host before state/cookie creation.
 Actual `https://rank.zhstudio.ch/api/health` and `/de/` returned HTTP 200 after DNS/TLS
 activation. Preview remains isolated at `development.rankwisp.pages.dev`.
+
+## Luna keyword proposals
+
+`POST /api/keyword-suggestions` is authenticated and requires an active writable
+licence. It works before a project exists and for existing projects. Request:
+
+```json
+{"appleID":904237743,"country":"de","locale":"en","existingKeywords":["task list"]}
+```
+
+`appleID` is a positive safe integer; `country` must be a supported storefront;
+`locale` is `en` or `de` for explanations. `existingKeywords` is optional (maximum
+100 strings of 100 characters). Unknown request fields are rejected. Search keyword
+language follows the storefront, independently of explanation language. Multilingual
+storefront defaults are German for Switzerland and English for Canada/India; users
+can edit proposals before saving.
+
+Successful responses contain `mode:"ai"`, `suggestions:[{keyword,reason}]`, `model`,
+`cached`, `generatedAt`, `reservedUSD`. There are at most ten ideas, with keywords
+at most 60 and reasons at most 200 characters. NFKC/case/whitespace duplicates and
+existing keywords are removed. Output is schema-validated and never includes
+measured rank, volume or difficulty fields. Model instructions limit reasons to
+app metadata and prohibit competitor brand stuffing and fabricated performance.
+These remain unmeasured suggestions, not research measurements or guarantees.
+
+The endpoint **never changes workspace, projects or keywords**. The frontend must
+let users select/edit and explicitly confirm through the ordinary project/keyword
+save endpoints. Only consent, AI accounting and tenant-specific cache are involved.
+App metadata comes from the server's paced Apple lookup, never arbitrary client text.
+Only bounded name/developer/category/description and existing terms go to OpenAI;
+no account email, history or competitor objects are sent.
+
+Feature-unavailability returns HTTP 200 with `mode:"unavailable"`, `suggestions:[]`
+and a reason: `CONSENT_REQUIRED`, `AI_NOT_CONFIGURED`, `AI_BUDGET`, `AI_INPUT_LIMIT`,
+`AI_UNAVAILABLE`, `AI_NO_SUGGESTIONS`, `APPLE_UNAVAILABLE`, `APPLE_APP_NOT_FOUND`.
+Invalid input returns 400, missing session 401, expired licence 402 and rate limit
+429. Consent is set explicitly through `PATCH /api/preferences {"aiConsent":true}`.
+`/api/config.aiConfigured` reflects whether the server key exists, not a guarantee
+of model access. Default model is `gpt-6-luna` via `OPENAI_MODEL`; set `OPENAI_API_KEY`
+with Wrangler secrets separately in production and preview to activate it.
+
+The same atomic account quota and global coordinator reservation as existing advice
+apply, with a $0.02 default reservation and no automatic paid retry. Failed/uncertain
+provider requests retain their reservation. Successful proposals cache for 24 hours
+per account, model and bounded input. Cache hits require current consent/licence but
+consume no further quota. Provider JSON follows the Responses API strict
+[`text.format` JSON schema](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+Verification uses fixtures for OpenAI output: consent/key gates without network,
+strict malformed-output rejection, language separation, deduplication, editable
+proposal isolation, cache isolation, concurrent quota bounds, global Worker reservation,
+and actual account-route validation run in Node and local workerd. No real OpenAI
+credential is available: live Luna generation remains unverified and unavailable.
+
+Suggestion requests have a 40-second overall deadline. Apple lookup waiting is capped
+at 15 seconds; provider timeout is capped by the remaining deadline, with another
+check after asynchronous global reservation. A timed-out queued Apple lookup may still
+populate the shared public metadata cache, but cannot later trigger an OpenAI call.
+A global reservation completed too late is conservatively retained without dispatch.
+
+Keyword-proposal release verification (17 November 2026): 35 Node tests and 19
+workerd tests passed, plus bundled startup smoke. Actual production and preview
+Worker deployments succeeded with the versions recorded above. HTTPS health/config
+returned 200, unauthenticated suggestion requests returned 401, and both environments
+reported `aiConfigured:false`. These live checks do not claim successful authenticated
+Luna generation; OpenAI and Google activation still require owner credentials.

@@ -1,6 +1,6 @@
 # Rankblick
 
-Native macOS-App für Yannis: Keywords im Schweizer und weiteren App Stores beobachten, jederzeit manuell abrufen und die Entwicklung über Zeit vergleichen. Eigenständiger SwiftUI-Code, keine Astro-Abhängigkeit und keine Verwendung von Astros privaten APIs oder Lizenzsystem.
+Native macOS-App zum Beobachten von Keywords in verschiedenen App Stores, für manuelle Abfragen und den Vergleich ihrer Entwicklung über Zeit. Eigenständiger SwiftUI-Code, keine Astro-Abhängigkeit und keine Verwendung von Astros privaten APIs oder Lizenzsystem.
 
 ## Verwendung
 
@@ -23,7 +23,7 @@ Direkte HTTPS-Abfragen an Apples öffentliche iTunes Search API mit konstanten P
 
 Diese API-Reihenfolge kann von der Suche auf einem iPhone und von Astro abweichen. Ein manueller Abruf ignoriert den lokalen URL-Cache; Apple kann dennoch serverseitig gecachte Daten liefern. Der Zeitstempel bezeichnet den Abrufzeitpunkt, nicht den Entstehungszeitpunkt von Apples Ranking. HTTP Date/Age werden, falls vorhanden, mitgespeichert. Es werden keine Popularity-, Difficulty-, Download- oder Suchvolumenwerte erfunden.
 
-Der Startdatensatz enthält ausschliesslich die acht tatsächlich am 7. November 2026 um 13:25 Uhr erhobenen Apple-API-Ergebnisse für Intranet ZH. Astro-Messungen wurden bewusst nicht in diese Zeitreihe gemischt. Es sind keine erfundenen historischen Messungen enthalten.
+Der mitgelieferte Startdatensatz ist leer und die automatische Aktualisierung zunächst deaktiviert. Er enthält keine privaten Projekte oder Messungen. Neue Projekte werden lokal angelegt; Messpunkte entstehen erst durch tatsächliche API-Abfragen. Die Offline-Tests verwenden ausdrücklich synthetische Fixtures, die nicht als Nutzerdaten ausgeliefert werden.
 
 ## Hintergrundbetrieb
 
@@ -110,7 +110,7 @@ Weiche Kurven verwenden monotone Interpolation zwischen echten Punkten und lasse
 
 ## Keyword-Recherche 1.4
 
-18 neue Begriffe erweitern die acht bestehenden Keywords auf 26: 12 gemeinsame Funktionsbegriffe, 10 Marken-/Portalbegriffe und 4 Spezialthemen. Alle haben eine gespeicherte Recherche-Begründung. Exportformat 2 enthält `visibilitySegments` mit den tatsächlich einbezogenen Keyword-Namen; `visibility` ist der Hauptvergleich für gemeinsame Funktionen. Datenbasisänderungen dürfen nicht als organisches Wachstum interpretiert werden. Vorher-/Nachher-Vergleiche benötigen dieselben Keywords, Gruppen, Apps und Gewichte. Die Untersuchung behauptet keine bessere statistische Marktanteilsgenauigkeit.
+Recherche-Begriffe lassen sich nach gemeinsamen Funktionen, Marken-/Portalbegriffen und Spezialthemen kategorisieren und mit einer Begründung speichern. Exportformat 2 enthält `visibilitySegments` mit den tatsächlich einbezogenen Keyword-Namen; `visibility` ist der Hauptvergleich für gemeinsame Funktionen. Datenbasisänderungen dürfen nicht als organisches Wachstum interpretiert werden. Vorher-/Nachher-Vergleiche benötigen dieselben Keywords, Gruppen, Apps und Gewichte. Die Untersuchung behauptet keine bessere statistische Marktanteilsgenauigkeit.
 
 Strukturierte Recherche lässt sich mit `RankblickWorker --import-keywords FILE.json` atomar importieren. Bestehende IDs, Messpunkte und Archivstatus bleiben bestehen. Schema: `appleID`, `country`, `keywords` mit `text`, `category` (`core`, `brand`, `adjacent`, `unclassified`) und `rationale`.
 

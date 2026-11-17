@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const require = createRequire(import.meta.url);
-const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion } = require('../desktop/security.cjs');
+const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion, externalURL } = require('../desktop/security.cjs');
 
 test('native auth restricts external launch to exact Google OAuth endpoint', () => {
   assert.equal(googleAuthURL('https://accounts.google.com/o/oauth2/v2/auth?state=opaque'), 'https://accounts.google.com/o/oauth2/v2/auth?state=opaque');
@@ -50,4 +50,11 @@ test('native auth callback accepts only a complete fragment-bound code and ticke
   const code='c'.repeat(43),ticket='t'.repeat(43),url=`rankwisp://auth/complete#code=${code}&ticket=${ticket}`;
   assert.deepEqual(authCompletion(url),{ticket,code});
   for(const value of [url.replace('auth/','auth.evil/'),url.replace('/complete','/other'),url.replace('rankwisp:','https:'),url.replace('auth/','user@auth/'),url.replace('auth/','auth:443/'),url.replace('#','?'),url.replace('#','?redirect=1#'),url+'&ticket='+ticket,url+'&extra=1',url.replace(code,'short'),url.replace(ticket,'')]) assert.equal(authCompletion(value),null);
+});
+
+test('repository link opens externally only for the exact approved HTTPS repository', () => {
+  const repo='https://github.com/Yann1s2/Rankwisp';
+  assert.equal(externalURL(repo),repo);
+  assert.equal(externalURL(repo+'/'),repo+'/');
+  for(const url of [repo.replace('https:','http:'),repo.replace('github.com','github.com.evil.test'),repo.replace('github.com','attacker@github.com'),repo.replace('github.com','github.com:8443'),repo.replace('github.com','github.com:443'),repo+'-malicious',repo+'/../Other',repo+'?redirect=https://evil.test',repo+'#fragment','https://github.com/attacker/Rankwisp']) assert.equal(externalURL(url),null);
 });

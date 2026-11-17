@@ -12,8 +12,19 @@ import {
 import { api } from "./api";
 import { useLocale, errorText } from "./i18n";
 import { Button, AppIcon, StoreLink, Empty } from "./components";
+import KeywordSuggestions, {
+  appendKeywordSuggestions,
+} from "./KeywordSuggestions";
+import { normalizeKeywords } from "../shared/domain.mjs";
 import { COUNTRIES } from "../shared/domain.mjs";
-export default function Onboarding({ onComplete, onCancel }) {
+export default function Onboarding({
+  onComplete,
+  onCancel,
+  config,
+  aiConsent,
+  onConsent,
+  onUsageChange,
+}) {
   const { tr, locale } = useLocale();
   const [step, setStep] = useState(0),
     [query, setQuery] = useState(""),
@@ -344,6 +355,20 @@ export default function Onboarding({ onComplete, onCancel }) {
               )}
             </span>
           </label>
+          <KeywordSuggestions
+            appleID={own.id}
+            country={country}
+            existingKeywords={normalizeKeywords(keywords)}
+            available={!!config?.aiConfigured}
+            consent={aiConsent}
+            onConsent={onConsent}
+            onUsageChange={onUsageChange}
+            onApply={(words) =>
+              setKeywords((previous) =>
+                appendKeywordSuggestions(previous, words),
+              )
+            }
+          />
           <div className="notice">
             {tr(
               "Nothing is guessed: your first refresh creates the first measurement. New keywords start unclassified until you review them.",

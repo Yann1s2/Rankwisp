@@ -1,18 +1,18 @@
 # Rankwisp visual identity and interaction review
 
-The redesign keeps Rankwisp's purpose and existing data flows. The original Wisp character
-uses a search lens and an upward observation line, rather than promising growth or revenue.
-The small app mark is the same cream character on solid navy. All illustrations are original SVG.
+The latest user direction replaces the initial cartoon approach: minimal, refined, and
+free of characters or decorative mascots. The identity uses a small abstract navy mark,
+a quieter wordmark and precise, content-sized components. Existing product flows remain intact.
 
 ## Colour roles
 
 | Colour | Role |
 | --- | --- |
-| `#1E1E24` | Primary text, illustration outlines |
+| `#1E1E24` | Primary text |
 | `#92140C` | Main actions, errors, editorial emphasis |
 | `#FFF8F0` | Warm app and website canvas |
-| `#FFCF99` | Trial, guidance and illustration accents |
-| `#111D4A` | Navigation, first metric, charts and icon background |
+| `#FFCF99` | Restrained trial and chart accents |
+| `#111D4A` | Navigation, first metric, charts and abstract mark |
 
 Secondary neutrals are derived for borders and quiet text. Google's familiar multicolour
 mark is reserved for the Google sign-in control. No decorative gradient or glass surfaces
@@ -27,7 +27,9 @@ are used; the chart's subtle area tint represents its plotted series.
 | Mobile desktop-width keyword table | Compact labelled rows with grouping/archive controls | No horizontal swipe required to manage a keyword |
 | Large competitor cards | Compact mobile comparison rows | Compare three apps together |
 | Fixed 900px chart coordinates | ResizeObserver-sized SVG coordinates | Axis labels remain legible on phones |
-| Decorative arrow art and generic mark | Original Wisp character and simplified matching app icon | Recognisable premium-playful identity |
+| Cartoon mascot and decorative sparkles | Abstract navy mark and ordinary directional icons | Follow the user’s revised minimalist direction |
+| Tall peach guidance card | Neutral panel sized to its content; compact mobile strip | Removes unnecessary visual weight and empty space |
+| Offset card and button shadows | Thin borders and flat surfaces | Calmer visual hierarchy |
 | Registration-first screen | Google-first, email only where supported | Reduce unnecessary forms |
 | Hidden off-canvas links keyboard-focusable | Hidden closed drawer, focus trap and Escape | Predictable keyboard navigation |
 | Short desktop overview clipped rows | Adaptive chart; summary table omitted below 850px, full data in Keywords | No clipped content |
@@ -54,3 +56,28 @@ Scrollable history and long lists remain scrollable intentionally. Layout reserv
 uses visualViewport for keyboard resizing, keeps mobile navigation anchored, and respects
 Reduce Motion. Native-device keyboard/VoiceOver and full real Google authorization are separate
 integration checks; visual browser inspection does not claim those passed.
+
+## Minimal revision verification
+
+All six primary views reviewed again on desktop and mobile. The replacement mark is used
+in the wordmark and authentication card; no mascot image or sparkle icon remains in the UI.
+Browser suite passed 7/7, including all 30 viewport/view combinations and serious/critical
+accessibility checks. Screenshots are in `work/production/minimal-*.png`.
+
+## Editable keyword suggestions
+
+Onboarding and keyword management share one compact suggestion component. Generating ideas
+requires the existing explicit OpenAI consent and a configured provider. Every returned term
+is editable and selectable; “Use selected” appends to the current draft, preserving manual
+wording and filtering Unicode-equivalent duplicates. Only the existing final save action
+adds keywords. Availability, budget and provider errors leave manual entry usable. The UI
+shows the actual returned model, and never labels fallback/manual data as AI output.
+
+The website navigation links to GitHub; its footer identifies the MIT-licensed open source
+repository. Settings → Account provides the same repository link alongside support.
+
+Verification: ten browser tests passed, including both feature surfaces, consent gating,
+manual-draft preservation, explicit save, provider-unavailable paths and modal accessibility.
+A final targeted test also verifies NFKC duplicate handling. Fixture screenshots are
+`screenshots/keyword-suggestions-desktop.png` and `screenshots/keyword-suggestions-mobile.png`;
+they demonstrate interaction with synthetic responses, not a live AI generation claim.

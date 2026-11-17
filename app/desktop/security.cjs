@@ -42,6 +42,17 @@ function authCompletion(raw) {
   } catch { return null; }
 }
 
+function externalURL(raw) {
+  try {
+    const url = new URL(raw);
+    if (url.username || url.password || url.port) return null;
+    const provider = url.protocol === 'https:' && ['apps.apple.com', 'checkout.stripe.com'].includes(url.hostname);
+    const repository = /^https:\/\/github\.com\//i.test(raw) && url.protocol === 'https:' && url.hostname === 'github.com' && /^\/Yann1s2\/Rankwisp\/?$/.test(url.pathname) && !url.search && !url.hash;
+    const support = url.protocol === 'mailto:' && url.pathname === 'info@zhstudio.ch';
+    return provider || repository || support ? url.href : null;
+  } catch { return null; }
+}
+
 function policy(origin) {
   return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.mzstatic.com; font-src 'self'; connect-src 'self'${origin ? ' ' + origin : ''}; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`;
 }
@@ -68,4 +79,4 @@ function assetPath(root, rawURL) {
   return file;
 }
 
-module.exports = { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion };
+module.exports = { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion, externalURL };

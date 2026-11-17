@@ -678,3 +678,188 @@ it("a shared native login link cannot grant the polling initiator a session with
     ).status,
   ).toBe(401);
 });
+
+it("keyword proposals endpoint authenticates and requires consent/key without network", async () => {
+  const a = await user();
+  const body = { appleID: 123456789, country: "de", locale: "en" };
+  const spy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+    throw Error("Unexpected provider request");
+  });
+  expect(
+    (await call("/api/keyword-suggestions", { method: "POST", body })).status,
+  ).toBe(401);
+  let response = await call("/api/keyword-suggestions", {
+    method: "POST",
+    token: a.token,
+    body,
+  });
+  expect(response.status).toBe(200);
+  expect((await response.json()).reason).toBe("CONSENT_REQUIRED");
+  await call("/api/preferences", {
+    method: "PATCH",
+    token: a.token,
+    body: { aiConsent: true },
+  });
+  response = await call("/api/keyword-suggestions", {
+    method: "POST",
+    token: a.token,
+    body,
+  });
+  expect((await response.json()).reason).toBe("AI_NOT_CONFIGURED");
+  expect(spy).not.toHaveBeenCalled();
+  const existingLong = await call("/api/keyword-suggestions", {
+    method: "POST",
+    token: a.token,
+    body: { ...body, existingKeywords: ["x".repeat(100)] },
+  });
+  expect(existingLong.status).toBe(200);
+  expect((await existingLong.json()).reason).toBe("AI_NOT_CONFIGURED");
+  expect(
+    (
+      await call("/api/keyword-suggestions", {
+        method: "POST",
+        token: a.token,
+        body: { ...body, existingKeywords: Array(101).fill("x") },
+      })
+    ).status,
+  ).toBe(400);
+  const expired = await user("web", 30 * 86400000);
+  expect(
+    (
+      await call("/api/keyword-suggestions", {
+        method: "POST",
+        token: expired.token,
+        body,
+      })
+    ).status,
+  ).toBe(402);
+});
+
+it("actual AccountStore keyword proposal route reserves global/account budgets, caches per tenant and never changes workspace", async () => {
+  const a = await user(),
+    b = await user();
+  const body = {
+    appleID: 1712345678,
+    country: "de",
+    locale: "en",
+    existingKeywords: ["planner"],
+  };
+  const before = await (await call("/api/export", { token: a.token })).text();
+  const coordinator = env.COORDINATOR.getByName("provider-coordination");
+  await runInDurableObject(coordinator, async (instance) => {
+    instance.db
+      .prepare("DELETE FROM counters WHERE key='global-ai-spend'")
+      .run();
+    const { appleClient } = await import("../../server/apple.mjs");
+    instance.apple = appleClient(instance.db, {
+      spacing: 0,
+      fetcher: (...args) => globalThis.fetch(...args),
+    });
+  });
+  for (const u of [a, b]) {
+    await runInDurableObject(u.stub, async (instance) => {
+      instance.env.OPENAI_API_KEY = "fixture-key-no-live-provider";
+    });
+    await call("/api/preferences", {
+      method: "PATCH",
+      token: u.token,
+      body: { aiConsent: true },
+    });
+  }
+  let providerCalls = 0;
+  let malformed = false;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options) => {
+    if (String(url).startsWith("https://itunes.apple.com/"))
+      return Response.json({
+        results: [
+          {
+            trackId: body.appleID,
+            trackName: "Planner",
+            description: "Plan tasks.",
+          },
+        ],
+      });
+    expect(String(url)).toBe("https://api.openai.com/v1/responses");
+    const payload = JSON.parse(options.body);
+    expect(payload.model).toBe("gpt-6-luna");
+    expect(payload.text.format.strict).toBe(true);
+    providerCalls++;
+    return Response.json({
+      output: [
+        {
+          content: [
+            {
+              type: "output_text",
+              text: JSON.stringify({
+                suggestions: malformed
+                  ? [{ keyword: "x", reason: "bad", volume: 100 }]
+                  : [
+                      { keyword: "planner", reason: "Existing" },
+                      { keyword: "Aufgaben", reason: "Task planning" },
+                      { keyword: "ＡＵＦＧＡＢＥＮ", reason: "Duplicate" },
+                    ],
+              }),
+            },
+          ],
+        },
+      ],
+    });
+  });
+  try {
+    const propose = async (u, value = body) =>
+      (
+        await call("/api/keyword-suggestions", {
+          method: "POST",
+          token: u.token,
+          body: value,
+        })
+      ).json();
+    const value = await propose(a);
+    expect(value.mode, JSON.stringify(value)).toBe("ai");
+    expect(value.suggestions).toEqual([
+      { keyword: "aufgaben", reason: "Task planning" },
+    ]);
+    expect(value.cached).toBe(false);
+    expect((await propose(a)).cached).toBe(true);
+    expect((await propose(b)).cached).toBe(false);
+    expect(providerCalls).toBe(2);
+    expect(await (await call("/api/export", { token: a.token })).text()).toBe(
+      before,
+    );
+    await runInDurableObject(a.stub, async (instance) => {
+      const account = instance.db
+        .prepare("SELECT * FROM accounts LIMIT 1")
+        .get();
+      expect(account.ai_count).toBe(1);
+      expect(account.ai_spent).toBe(0.02);
+      instance.db.prepare("UPDATE accounts SET ai_count=100").run();
+    });
+    expect((await propose(a, { ...body, existingKeywords: [] })).reason).toBe(
+      "AI_BUDGET",
+    );
+    malformed = true;
+    expect((await propose(b, { ...body, existingKeywords: [] })).reason).toBe(
+      "AI_UNAVAILABLE",
+    );
+    expect(providerCalls).toBe(3);
+    await runInDurableObject(coordinator, async (instance) => {
+      expect(
+        instance.db
+          .prepare("SELECT value FROM counters WHERE key='global-ai-spend'")
+          .get().value,
+      ).toBeCloseTo(0.06);
+      instance.db
+        .prepare("UPDATE counters SET value=20 WHERE key='global-ai-spend'")
+        .run();
+    });
+    expect(
+      (await propose(b, { ...body, existingKeywords: ["different"] })).reason,
+    ).toBe("AI_BUDGET");
+    expect(providerCalls).toBe(3);
+  } finally {
+    for (const u of [a, b])
+      await runInDurableObject(u.stub, async (instance) => {
+        delete instance.env.OPENAI_API_KEY;
+      });
+  }
+});

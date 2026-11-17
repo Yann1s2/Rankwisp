@@ -111,3 +111,11 @@ Accountlöschung ist serverseitig tombstoned, invalidiert Sessions und entfernt 
 Arbeitsbereich. Sie verlangt aktuelle Google-Authentifizierung und explizites DELETE.
 Auth-Tokens werden nicht geloggt; Worker-Invocation-Logs sind deaktiviert, um OAuth-
 Callback-Queryparameter nicht versehentlich in Zugriffslogs aufzunehmen.
+
+## Open-source publication
+
+Das Repository ist nach expliziter Autorisierung öffentlich unter MIT. Anbieter-Secrets
+bleiben in Cloudflare/GitHub Secret Stores; ein privates Code-Repository ist aktuell
+nicht erforderlich. Siehe [OPEN-SOURCE.md](OPEN-SOURCE.md). Pages beobachtet neben
+`app/*` und `.github/*` auch `LICENSE`, `THIRD_PARTY_NOTICES.md` und
+`THIRD_PARTY_LICENSES.txt`, damit aktualisierte Lizenztexte neu ausgeliefert werden.

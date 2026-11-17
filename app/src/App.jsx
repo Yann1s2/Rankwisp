@@ -10,7 +10,6 @@ import {
   ArrowUpRight,
   ArrowDownToLine,
   RefreshCw,
-  Sparkles,
   ChevronDown,
   Globe,
   LogOut,
@@ -61,6 +60,9 @@ import {
 } from "../shared/domain.mjs";
 import { demoWorkspace } from "./demo.mjs";
 import Onboarding from "./onboarding";
+import KeywordSuggestions, {
+  appendKeywordSuggestions,
+} from "./KeywordSuggestions";
 const demo = new URLSearchParams(window.location.search).has("demo");
 export default function App() {
   const { tr, locale, setLocale, date, number } = useLocale();
@@ -95,6 +97,17 @@ export default function App() {
     keywords.find((k) => !k.archived) ||
     keywords[0];
   const notify = (text, type = "success") => setNotice({ text, type });
+  async function refreshAIUsage() {
+    try {
+      setMe(await api("/me"));
+    } catch {
+      /* Usage refresh can be retried on the next workspace load. */
+    }
+  }
+  async function saveAIConsent(aiConsent) {
+    await api("/preferences", { aiConsent }, "PATCH");
+    setMe((previous) => ({ ...previous, aiConsent }));
+  }
   async function load() {
     const [m, w] = await Promise.all([api("/me"), api("/workspace")]);
     setMe(m);
@@ -357,7 +370,7 @@ export default function App() {
     ["keywords", Search, "Keywords"],
     ["history", ChartNoAxesCombined, tr("Rank history", "Ranking-Verlauf")],
     ["competitors", Users, tr("Competitors", "Konkurrenz")],
-    ["insights", Sparkles, tr("Next moves", "Nächste Schritte")],
+    ["insights", ArrowUpRight, tr("Next moves", "Nächste Schritte")],
   ];
   const active = keywords.filter((k) => !k.archived);
   const fresh = active.filter((k) => quality(k) === "fresh");
@@ -773,47 +786,38 @@ export default function App() {
                       </div>
                     </section>
                     <aside className="next-card">
-                      <span className="next-tag">
-                        <Sparkles size={15} />{" "}
-                        {tr("A GOOD NEXT MOVE", "EIN GUTER NÄCHSTER SCHRITT")}
-                      </span>
-                      <img
-                        className="next-mascot"
-                        src="/wisp.svg"
-                        width="130"
-                        height="116"
-                        alt=""
-                      />
-                      <h2>
-                        {active.length
-                          ? tr(
-                              "One signal. One next step.",
-                              "Ein Signal. Ein nächster Schritt.",
-                            )
-                          : tr(
-                              "Start with what your app does best.",
-                              "Beginne mit der Stärke deiner App.",
-                            )}
-                      </h2>
-                      <p>
-                        {active.length
-                          ? tr(
-                              "Find a useful idea in your latest observations.",
-                              "Finde eine nützliche Idee in deinen letzten Messungen.",
-                            )
-                          : tr(
-                              "Choose a few phrases a future user might type. Measure first, then decide.",
-                              "Wähle einige Begriffe, nach denen künftige Nutzer suchen könnten. Erst messen, dann entscheiden.",
-                            )}
-                      </p>
+                      <div className="next-copy">
+                        <span className="next-tag">
+                          {tr("NEXT MOVE", "NÄCHSTER SCHRITT")}
+                        </span>
+                        <h2>
+                          {active.length
+                            ? tr(
+                                "A clearer next step.",
+                                "Ein klarer nächster Schritt.",
+                              )
+                            : tr(
+                                "Start with what your app does best.",
+                                "Beginne mit der Stärke deiner App.",
+                              )}
+                        </h2>
+                        <p>
+                          {active.length
+                            ? tr(
+                                "Find a useful idea in your latest observations.",
+                                "Finde eine nützliche Idee in deinen letzten Messungen.",
+                              )
+                            : tr(
+                                "Choose a few phrases a future user might type. Measure first, then decide.",
+                                "Wähle einige Begriffe, nach denen künftige Nutzer suchen könnten. Erst messen, dann entscheiden.",
+                              )}
+                        </p>
+                      </div>
                       <Button
-                        variant="light"
+                        variant="secondary"
                         onClick={() => setPage("insights")}
                       >
-                        {tr(
-                          "Find my next move",
-                          "Meinen nächsten Schritt finden",
-                        )}{" "}
+                        {tr("Review next moves", "Nächste Schritte")}{" "}
                         <ArrowRight size={15} />
                       </Button>
                       <small>
@@ -923,6 +927,12 @@ export default function App() {
                       />
                       {tr("Archived", "Archiviert")}
                     </label>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setModal("keyword-suggestions")}
+                    >
+                      {tr("Suggest keywords", "Keywords vorschlagen")}
+                    </Button>
                     <Button onClick={() => setModal("keyword")}>
                       <Plus size={16} />
                       {tr("Add keywords", "Keywords hinzufügen")}
@@ -1120,7 +1130,7 @@ export default function App() {
                 <div className="insights-layout">
                   <section className="panel advice-panel">
                     <span className="eyebrow">
-                      <Sparkles size={15} />
+                      <ArrowUpRight size={15} />
                       {tr(
                         "LESS NOISE. MORE DIRECTION.",
                         "WENIGER RAUSCHEN. MEHR RICHTUNG.",
@@ -1224,7 +1234,7 @@ export default function App() {
                         )
                       }
                     >
-                      <Sparkles size={16} />
+                      <ArrowUpRight size={16} />
                       {tr(
                         "Find a useful next step",
                         "Einen nützlichen Schritt finden",
@@ -1390,6 +1400,10 @@ export default function App() {
           onClose={() => setModal(null)}
         >
           <Onboarding
+            config={config}
+            aiConsent={!!me.aiConsent}
+            onConsent={saveAIConsent}
+            onUsageChange={refreshAIUsage}
             onCancel={() => setModal(null)}
             onComplete={async (p) => {
               await load();
@@ -1448,8 +1462,14 @@ export default function App() {
           </Button>
         </Modal>
       )}
-      {modal === "keyword" && (
+      {(modal === "keyword" || modal === "keyword-suggestions") && (
         <KeywordModal
+          project={project}
+          config={config}
+          aiConsent={!!me.aiConsent}
+          onConsent={saveAIConsent}
+          onUsageChange={refreshAIUsage}
+          suggestionsOpen={modal === "keyword-suggestions"}
           onClose={() => setModal(null)}
           onSave={(text) =>
             action("keyword", async () => {
@@ -1686,7 +1706,16 @@ function KeywordTable({
     </>
   );
 }
-function KeywordModal({ onClose, onSave }) {
+function KeywordModal({
+  onClose,
+  onSave,
+  project,
+  config,
+  aiConsent,
+  onConsent,
+  onUsageChange,
+  suggestionsOpen,
+}) {
   const { tr } = useLocale();
   const [text, setText] = useState("");
   return (
@@ -1703,7 +1732,7 @@ function KeywordModal({ onClose, onSave }) {
             "Wonach könnten Menschen suchen?",
           )}
           <textarea
-            autoFocus
+            autoFocus={!suggestionsOpen}
             required
             rows="4"
             value={text}
@@ -1720,6 +1749,23 @@ function KeywordModal({ onClose, onSave }) {
             )}
           </span>
         </label>
+        <KeywordSuggestions
+          appleID={project.appleID}
+          country={project.country}
+          existingKeywords={[
+            ...project.keywords.map((keyword) => keyword.text),
+            ...normalizeKeywords(text),
+          ]}
+          available={!!config.aiConfigured}
+          consent={aiConsent}
+          onConsent={onConsent}
+          onUsageChange={onUsageChange}
+          demo={demo}
+          initiallyOpen={suggestionsOpen}
+          onApply={(words) =>
+            setText((previous) => appendKeywordSuggestions(previous, words))
+          }
+        />
         <Button type="submit">
           <Plus size={16} />
           {tr("Add keywords", "Keywords hinzufügen")}
@@ -1830,13 +1876,10 @@ function Auth({ onReady, config, notice, onRetry }) {
             "Entdecke die kleinen Signale, die deine nächste grosse Idee weiterbringen.",
           )}
         </p>
-        <div className="auth-art">
-          <img src="/wisp.svg" width="380" height="340" alt="" />
-        </div>
       </div>
       <section className="auth-card">
         <span className="auth-icon">
-          <img src="/mark.svg" width="52" height="52" alt="" />
+          <img src="/brand/symbol.png" width="52" height="52" alt="" />
         </span>
         <h2>
           {register
@@ -2634,6 +2677,15 @@ function SettingsPage({
       >
         <h2>{tr("Account & privacy", "Konto & Datenschutz")}</h2>
         <p>{me.account.email}</p>
+        <a
+          href="https://github.com/Yann1s2/Rankwisp"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-button settings-source-link"
+        >
+          {tr("Source code on GitHub", "Quellcode auf GitHub")}{" "}
+          <ExternalLink size={13} />
+        </a>
         <a href="mailto:info@zhstudio.ch" className="text-button">
           <Mail size={16} />
           info@zhstudio.ch

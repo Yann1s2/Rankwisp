@@ -73,8 +73,8 @@ struct MainView: View {
                     .menuStyle(.borderlessButton).menuIndicator(.hidden)
                 SettingsLink { Label("Einstellungen", systemImage: "slider.horizontal.3").font(Theme.font(11)).frame(maxWidth: .infinity, alignment: .leading) }.buttonStyle(.plain)
                 HStack(spacing: 8) {
-                    Text("YR").font(Theme.font(10, .semibold)).foregroundStyle(Theme.paper).frame(width: 28, height: 28).background(Theme.ink, in: Circle())
-                    Text("Yannis\nLokal auf diesem Mac").font(Theme.font(9)).foregroundStyle(Theme.secondary)
+                    Text("L").font(Theme.font(10, .semibold)).foregroundStyle(Theme.paper).frame(width: 28, height: 28).background(Theme.ink, in: Circle())
+                    Text("Lokaler Workspace\nAuf diesem Mac").font(Theme.font(9)).foregroundStyle(Theme.secondary)
                 }.padding(.top, 8)
             }.padding(.horizontal, 10).padding(.bottom, 4)
         }.frame(width: 148)

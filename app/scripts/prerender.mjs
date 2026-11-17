@@ -9,6 +9,10 @@ const server = await createServer({
 });
 const { Marketing } = await server.ssrLoadModule("/src/marketing.jsx");
 const template = readFileSync("dist/index.html", "utf8");
+mkdirSync("dist/licenses", { recursive: true });
+for (const file of ["LICENSE", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_LICENSES.txt"]) {
+  writeFileSync(`dist/licenses/${file}`, readFileSync(`../${file}`));
+}
 // Pages must have a real app entry; rewriting /app to /index.html is normalized
 // by the edge into / and would accidentally show the marketing site.
 mkdirSync("dist/app", { recursive: true });

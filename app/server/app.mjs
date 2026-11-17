@@ -25,7 +25,7 @@ import {
   DAY,
 } from "../shared/domain.mjs";
 import { appleClient, competitors } from "./apple.mjs";
-import { advise } from "./ai.mjs";
+import { advise, suggestKeywords } from "./ai.mjs";
 const fail = (code, status = 400) => Object.assign(Error(code), { status });
 const country = z.enum(COUNTRIES);
 export function createApp(
@@ -34,6 +34,7 @@ export function createApp(
     env = process.env,
     apple = appleClient(db),
     ai = advise,
+    keywordSuggestions = suggestKeywords,
     stripeClient,
     appFactory = express,
     authenticate,
@@ -801,6 +802,23 @@ export function createApp(
       saveWorkspace(db, req.account.id, data);
       throw fail("APPLE_UNAVAILABLE", 503);
     }
+  });
+  app.post("/api/keyword-suggestions", async (req, res) => {
+    writable(req);
+    const input = z
+      .object({
+        appleID: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        country,
+        locale: z.enum(["en", "de"]),
+        existingKeywords: z
+          .array(z.string().trim().min(1).max(100))
+          .max(100)
+          .default([]),
+      })
+      .strict()
+      .parse(req.body);
+    if (!rate(db, "ai:" + req.account.id, 4)) throw fail("RATE_LIMIT", 429);
+    res.json(await keywordSuggestions(db, req.account, input, { env, apple }));
   });
   app.post("/api/projects/:id/advice", async (req, res) => {
     writable(req);

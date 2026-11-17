@@ -1621,42 +1621,6 @@ dialog::backdrop {
   font-size: 11px;
   color: var(--muted);
 }
-.auth-art {
-  height: 150px;
-  display: flex;
-  align-items: flex-end;
-  gap: 15px;
-  margin-top: 45px;
-  padding-left: 10px;
-  position: relative;
-  width: 300px;
-}
-.auth-art span {
-  background: #b5adb1;
-  width: 38px;
-  border-radius: 22px 22px 6px 6px;
-}
-.auth-art span:nth-child(1) {
-  height: 40px;
-}
-.auth-art span:nth-child(2) {
-  height: 70px;
-  background: #b5adb1;
-}
-.auth-art span:nth-child(3) {
-  height: 100px;
-  background: var(--muted);
-}
-.auth-art span:nth-child(4) {
-  height: 145px;
-  background: var(--navy);
-}
-.auth-art svg {
-  position: absolute;
-  right: 0;
-  top: 0;
-  color: var(--muted);
-}
 /* Public website */
 .marketing {
   background: var(--cream);

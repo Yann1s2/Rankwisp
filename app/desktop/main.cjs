@@ -2,7 +2,7 @@ const { app, BrowserWindow, protocol, net, shell, session, safeStorage, ipcMain 
 const { join, resolve } = require('node:path');
 const { existsSync, readFileSync, writeFileSync, renameSync, rmSync } = require('node:fs');
 const { pathToFileURL } = require('node:url');
-const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion } = require('./security.cjs');
+const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion, externalURL } = require('./security.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'rankwisp', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 
@@ -25,9 +25,8 @@ app.on('second-instance', (_event, argv) => { for (const arg of argv) receiveAut
 
 async function external(raw) {
   try {
-    const url = new URL(raw);
-    if (url.username || url.password || url.port) return;
-    if ((url.protocol === 'https:' && ['apps.apple.com', 'checkout.stripe.com'].includes(url.hostname)) || (url.protocol === 'mailto:' && url.pathname === 'info@zhstudio.ch')) await shell.openExternal(url.href);
+    const target = externalURL(raw);
+    if (target) await shell.openExternal(target);
   } catch { /* The renderer reports actionable checkout/auth errors separately. */ }
 }
 

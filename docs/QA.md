@@ -8,10 +8,10 @@ Dieser Bericht unterscheidet die laufende Infrastruktur von der kommerziellen Pr
 
 | Prüfung | Ergebnis / Aussage |
 | --- | --- |
-| Node-Fachlogik/API/native Sicherheit | **28/28 bestanden**; Import, Lizenz/Trial, Apple/AI, Zahlungen, Pfade/CSP/Handoff |
-| Tatsächliche workerd-Umgebung | **17/17 bestanden**; D1/DO, signierter Mock-Google-Flow, Sitzungen, Tenant-Isolation, Alarme, Limits, Wiederherstellung |
+| Node-Fachlogik/API/native Sicherheit | **35/35 bestanden**; Import, Lizenz/Trial, Apple/AI, Zahlungen, Pfade/CSP/Handoff |
+| Tatsächliche workerd-Umgebung | **19/19 bestanden**; D1/DO, signierter Mock-Google-Flow, Sitzungen, Tenant-Isolation, Alarme, Limits, Wiederherstellung |
 | Gebündelter Worker-Kaltstart | **Bestanden**; startet den echten Build ausserhalb der Vitest-Transformation |
-| Browser-End-to-End | **7/7 bestanden**; EN/DE, Konto/Import/Archiv/Export, Onboarding, Fehler, Tastatur, Layout, Accessibility |
+| Browser-End-to-End | **10/10 bestanden**; EN/DE, Konto/Import/Archiv/Export, Onboarding, Fehler, Tastatur, Layout, Accessibility |
 | Native Client-Anmeldung mit Bridge-Fixture | **3/3 bestanden**; Geräte-Completioncode + PKCE vor Tokenaustausch, sichere Speicherung, Abbruch/Listener-Cleanup; Keychain-Retry, alte AbortSignal-Statics deaktiviert |
 | Echte Apple-Netzwerkintegration in workerd | **Bestanden**; öffentliche Suche/Lookup, Projekt, Alarmmessung und persistierte echte Position/HTTP-Provenienz |
 | Produktions-Webbuild | **Bestanden**, 12 statische EN/DE-Seiten plus gemeinsame App |
@@ -26,8 +26,10 @@ native OS-Tests. Native CSP/Protokollfilter sind gesondert geprüft.
 ## Oberfläche und Verhalten
 
 Dedizierter UI Design Specialist hat alle sechs App-Bereiche, Onboarding, Anmeldung,
-Einstellungen und Website mehrfach visuell geprüft. Originalillustration Wisp und Icon
-verwenden das vollständige fünfteilige Farbsystem. Einstellungen sind in vier per
+Einstellungen und Website mehrfach visuell geprüft. Die anschliessende Minimalismus-
+Revision entfernt Figuren und dekorative Sterne vollständig. Ein abstraktes Markenzeichen,
+ein neues Icon und kompakte neutrale Hinweisbereiche ersetzen die verspielte Vorversion.
+Das vollständige fünfteilige Farbsystem bleibt erhalten. Einstellungen sind in vier per
 Tastatur bedienbare Tabs aufgeteilt. Diagrammtext passt sich kleinen Breiten an.
 
 Automatisierte Matrix: **375×667, 390×844, 844×390, 768×1024, 1440×800**, jeweils
@@ -41,8 +43,30 @@ oder kritischen Verstösse**. Animationen sind während der Messung deaktiviert,
 nicht ein kurzzeitig halbtransparenter Eintrittsframe als Textkontrast gewertet wird.
 Das ist keine vollständige manuelle Screenreader-Zertifizierung.
 
-Screenshots unter `screenshots/redesign-*.png`. Native Keyboard-/Safe-Area-/Geräteprüfung
+Aktuelle Screenshots unter `screenshots/minimal-*.png`; `redesign-*` dokumentiert die
+vorherige, inzwischen ersetzte Gestaltung. Native Keyboard-/Safe-Area-/Geräteprüfung
 und weitere manuelle Assistive-Technology-Prüfungen bleiben zusätzlich erforderlich.
+
+## Luna-Keyword-Vorschläge und offene Quellen
+
+Die neue Vorschlagsfunktion ist im Onboarding und in der Keyword-Verwaltung eingebaut.
+Sie verwendet öffentliche App-Metadaten, Store-Land und vorhandene Begriffe. Nutzer
+können jede Idee bearbeiten und abwählen; „Use selected“ ergänzt nur den Entwurf.
+Erst der separate Speicherschritt legt Keywords an. Manuelle Eingaben werden nicht
+überschrieben. Ohne Provider-Konfiguration bleibt die manuelle Eingabe funktionsfähig.
+
+Node-/workerd-Tests prüfen Einwilligung, Kontingente, globale Kostenreservation,
+Mandantentrennung, Cache, unvollständige/ungültige Antworten, Unicode-Duplikate und
+Trennzeichen, echte 100-Zeichen-Bestandskeywords sowie den 40-Sekunden-Zeitrahmen.
+Die Route verändert niemals Arbeitsbereiche. Browserprüfungen belegen Bearbeitung,
+Auswahl, Entwurferhalt, explizites Speichern, Fehler und Onboarding. Die Screenshots
+`keyword-suggestions-*.png` nutzen ausdrücklich synthetische Provider-Fixtures;
+sie belegen die Oberfläche, keinen echten Luna-Aufruf. Der API-Key fehlt weiterhin.
+
+Vollständiger Quellcode wird mit ausdrücklicher Autorisierung unter MIT veröffentlicht.
+[OPEN-SOURCE.md](OPEN-SOURCE.md) dokumentiert Secret-Scan, manuelle Datenprüfung und
+Lizenzhinweise. GitHub-Verweise sind in Website-Navigation, Footer und Kontoeinstellungen
+integriert; native Links öffnen nur das freigegebene Repository im Systembrowser.
 
 ## Tatsächlich behobene Fehler
 
