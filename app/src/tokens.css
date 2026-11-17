@@ -1,0 +1,13 @@
+:root {
+  --canvas: #f6f7f3;
+  --paper: #fff;
+  --pine: #2c4636;
+  --lime: #e4edc4;
+  --ink: #344333;
+  --muted: #89927f;
+  --line: #e4e8de;
+  --radius: 12px;
+  --motion-fast: 160ms;
+  --motion-enter: 240ms;
+  color-scheme: light;
+}

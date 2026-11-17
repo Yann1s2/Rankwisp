@@ -1,0 +1,8 @@
+node_modules
+.data
+.env
+.env.*
+ios
+dist
+test-results
+playwright-report

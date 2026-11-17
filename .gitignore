@@ -1,0 +1,15 @@
+app/node_modules/
+app/dist/
+app/.data/
+app/.env
+app/.env.*
+!app/.env.example
+app/test-results/
+app/playwright-report/
+app/ios/App/Pods/
+app/ios/App/App/public/
+app/ios/App/build/
+legacy/.build/
+releases/
+.DS_Store
+**/xcuserdata/
