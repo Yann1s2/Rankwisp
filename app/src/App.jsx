@@ -1998,8 +1998,8 @@ function Auth({ onReady, config, notice, onRetry }) {
         </a>
         <p className="auth-fine">
           {tr(
-            "Private development preview. Purchases are not yet open.",
-            "Private Entwicklungsvorschau. Käufe sind noch nicht freigeschaltet.",
+            "Development preview. Purchases are not yet open.",
+            "Entwicklungsvorschau. Käufe sind noch nicht freigeschaltet.",
           )}{" "}
           <a href={`/${locale}/privacy`}>{tr("Privacy", "Datenschutz")}</a>
         </p>

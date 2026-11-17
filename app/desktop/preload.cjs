@@ -3,7 +3,7 @@ contextBridge.exposeInMainWorld(
   "rankwisp",
   Object.freeze({
     platform: process.platform,
-    version: "0.1.0",
+    version: "0.2.0",
     openAuth: (url) => ipcRenderer.invoke("rankwisp:open-auth", url),
     onAuthCompleted: (callback) => {
       if (typeof callback !== "function") throw Error("INVALID_LISTENER");

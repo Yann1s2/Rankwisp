@@ -9,7 +9,12 @@ const server = await createServer({
 });
 const { Marketing } = await server.ssrLoadModule("/src/marketing.jsx");
 const template = readFileSync("dist/index.html", "utf8");
-const base = process.env.SITE_URL?.replace(/\/$/, "");
+// Pages must have a real app entry; rewriting /app to /index.html is normalized
+// by the edge into / and would accidentally show the marketing site.
+mkdirSync("dist/app", { recursive: true });
+writeFileSync("dist/app/index.html", template);
+const siteURL = process.env.SITE_URL || (process.env.CF_PAGES ? (process.env.CF_PAGES_BRANCH === "main" ? "https://rank.zhstudio.ch" : "https://development.rankwisp.pages.dev") : "");
+const base = siteURL.replace(/\/$/, "");
 const valid = base && /^https:\/\/[^/]+$/.test(base);
 const apiOrigin = process.env.VITE_API_ORIGIN || "";
 if (apiOrigin && !/^https:\/\/[^/]+$/.test(apiOrigin) && !/^http:\/\/127\.0\.0\.1:\d+$/.test(apiOrigin)) throw new Error("VITE_API_ORIGIN must be an HTTPS origin (or explicit local development origin)");

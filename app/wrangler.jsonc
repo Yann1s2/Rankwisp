@@ -3,9 +3,29 @@
   "name": "rankwisp",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-11-17",
-  "compatibility_flags": ["nodejs_compat"],
-  "services": [{ "binding": "API", "service": "rankwisp-api" }],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "services": [
+    {
+      "binding": "API",
+      "service": "rankwisp-api"
+    }
+  ],
   "env": {
-    "preview": { "services": [{ "binding": "API", "service": "rankwisp-api-preview" }] }
+    "preview": {
+      "services": [
+        {
+          "binding": "API",
+          "service": "rankwisp-api-preview"
+        }
+      ],
+      "vars": {
+        "SITE_URL": "https://development.rankwisp.pages.dev"
+      }
+    }
+  },
+  "vars": {
+    "SITE_URL": "https://rank.zhstudio.ch"
   }
 }

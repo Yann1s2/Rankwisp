@@ -412,8 +412,8 @@ function MarketingBody({ page }) {
                 </p>
                 <p className="small muted">
                   {tr(
-                    "Proposed launch pricing. Purchases are not open in this private preview. Final tax-inclusive pricing and terms must be confirmed before launch.",
-                    "Vorgesehener Einführungspreis. In dieser privaten Vorschau sind Käufe noch nicht geöffnet. Endpreis inklusive Steuern und Bedingungen werden vor dem Start bestätigt.",
+                    "Proposed launch pricing. Purchases are not open in this preview. Final tax-inclusive pricing and terms must be confirmed before launch.",
+                    "Vorgesehener Einführungspreis. In dieser Vorschau sind Käufe noch nicht geöffnet. Endpreis inklusive Steuern und Bedingungen werden vor dem Start bestätigt.",
                   )}
                 </p>
               </div>
@@ -471,8 +471,8 @@ function MarketingBody({ page }) {
                 </ul>
                 <a href="/app" className="button">
                   {tr(
-                    "Explore the private preview",
-                    "Private Vorschau entdecken",
+                    "Explore the preview",
+                    "Vorschau entdecken",
                   )}{" "}
                   <ArrowRight size={16} />
                 </a>
@@ -586,8 +586,8 @@ function MarketingBody({ page }) {
           <span className="small muted">
             © {new Date().getFullYear()} Rankwisp ·{" "}
             {tr(
-              "Working brand, private preview",
-              "Arbeitsmarke, private Vorschau",
+              "Working brand, preview",
+              "Arbeitsmarke, Vorschau",
             )}
           </span>
         </div>
@@ -845,7 +845,7 @@ function InfoPage({ page }) {
                 <h2>{name}</h2>
                 <p>{detail}</p>
                 <span className="pill">
-                  {tr("Private development", "Private Entwicklung")}
+                  {tr("Development build", "Entwicklungsbuild")}
                 </span>
               </article>
             ))}
@@ -859,22 +859,22 @@ function InfoPage({ page }) {
         <>
           <p className="lede">
             {tr(
-              "This notice describes the current private preview. The legal operator, hosting region and processor agreements must be confirmed before public launch.",
-              "Diese Erklärung beschreibt die aktuelle private Vorschau. Rechtlicher Betreiber, Hostingregion und Auftragsverarbeitungsverträge müssen vor dem öffentlichen Start bestätigt werden.",
+              "This is a review draft for the publicly accessible preview. Operator details and processor agreements still require confirmation before commercial use.",
+              "Dies ist ein Prüfentwurf für die öffentlich erreichbare Vorschau. Betreiberangaben und Auftragsverarbeitungsverträge müssen vor kommerzieller Nutzung noch bestätigt werden.",
             )}
           </p>
           <h2>{tr("What is stored", "Was gespeichert wird")}</h2>
           <p>
             {tr(
-              "Your account email, a salted password hash, session records, immutable trial dates, licence and usage counters, selected apps, keywords, observations and import backups. Local language preference is saved on your device. Session cookies are necessary for sign-in; no advertising cookies are used.",
-              "Deine Konto-E-Mail, ein gesalzener Passwort-Hash, Sitzungen, unveränderlicher Testbeginn, Lizenz und Nutzungskontingente, gewählte Apps, Keywords, Messungen und Importsicherungen. Die Sprachwahl wird lokal gespeichert. Sitzungscookies sind zur Anmeldung erforderlich; Werbecookies werden nicht eingesetzt.",
+              "When Google sign-in is configured: your Google account identifier and verified email, hashed session records, trial dates, licence and usage counters, selected apps, keywords, observations and import backups. Google access and ID tokens are not retained. Password hashes apply only to the separate local Node version. Local language preference is saved on your device. Session cookies are necessary for sign-in; no advertising cookies are used.",
+              "Wenn Google-Anmeldung eingerichtet ist: Google-Kontokennung und bestätigte E-Mail, gehashte Sitzungsdaten, Testbeginn, Lizenz und Nutzungskontingente, gewählte Apps, Keywords, Messungen und Importsicherungen. Google-Zugriffs- und ID-Tokens werden nicht aufbewahrt. Passwort-Hashes betreffen nur die separate lokale Node-Version. Die Sprachwahl wird lokal gespeichert. Sitzungscookies sind zur Anmeldung erforderlich; Werbecookies werden nicht eingesetzt.",
             )}
           </p>
           <h2>{tr("Where requests go", "Wohin Anfragen gehen")}</h2>
           <p>
             {tr(
-              "Apple receives search terms, app IDs and storefront country. App icons load from Apple’s CDN and may expose your IP address to Apple. With your separate permission, OpenAI receives bounded project observations for requested advice. Provider API keys remain on the server. Payment processing will use a configured provider only after launch approval.",
-              "Apple erhält Suchbegriffe, App-IDs und das Store-Land. App-Icons werden von Apples CDN geladen, wodurch Apple deine IP-Adresse erhält. Mit deiner gesonderten Einwilligung erhält OpenAI begrenzte Projektmessungen für angeforderte Empfehlungen. API-Schlüssel bleiben auf dem Server. Zahlungsabwicklung erfolgt erst nach Freigabe über einen eingerichteten Anbieter.",
+              "Cloudflare serves this website and API and stores account data using D1 and SQLite Durable Objects; network requests disclose your IP address to Cloudflare. Google handles sign-in when enabled. Apple receives search terms, app IDs and storefront country. App icons load from Apple’s CDN and may expose your IP address to Apple. With your separate permission, OpenAI receives bounded project observations for requested advice. Provider API keys remain on the server. Payment processing will use a configured provider only after launch approval.",
+              "Cloudflare stellt Website und API bereit und speichert Kontodaten in D1 und SQLite Durable Objects; dabei erhält Cloudflare deine IP-Adresse. Google übernimmt die Anmeldung, sobald sie aktiviert ist. Apple erhält Suchbegriffe, App-IDs und das Store-Land. App-Icons werden von Apples CDN geladen, wodurch Apple deine IP-Adresse erhält. Mit deiner gesonderten Einwilligung erhält OpenAI begrenzte Projektmessungen für angeforderte Empfehlungen. API-Schlüssel bleiben auf dem Server. Zahlungsabwicklung erfolgt erst nach Freigabe über einen eingerichteten Anbieter.",
             )}
           </p>
           <h2>{tr("Analytics is optional", "Analytics ist optional")}</h2>
@@ -953,8 +953,8 @@ function InfoPage({ page }) {
         <>
           <p className="lede">
             {tr(
-              "Rankwisp is a working brand in private development.",
-              "Rankwisp ist eine Arbeitsmarke in privater Entwicklung.",
+              "Rankwisp is a working brand with a publicly accessible development preview.",
+              "Rankwisp ist eine Arbeitsmarke mit öffentlich erreichbarer Entwicklungsvorschau.",
             )}
           </p>
           <h2>Support</h2>
@@ -964,8 +964,8 @@ function InfoPage({ page }) {
           </h2>
           <p>
             {tr(
-              "The legal operator’s name, service address, legal form and any required registration/tax details have not yet been supplied. They must be completed and reviewed before public launch or sales. No company or address is inferred from the support email.",
-              "Name des rechtlichen Betreibers, Geschäftsadresse, Rechtsform und erforderliche Register-/Steuerangaben wurden noch nicht bereitgestellt. Sie müssen vor öffentlichem Start oder Verkauf ergänzt und geprüft werden. Aus der Support-E-Mail werden keine Firma oder Adresse abgeleitet.",
+              "The legal operator’s name, service address, legal form and any required registration/tax details have not yet been supplied. They must be completed and reviewed before commercial launch or sales. No company or address is inferred from the support email.",
+              "Name des rechtlichen Betreibers, Geschäftsadresse, Rechtsform und erforderliche Register-/Steuerangaben wurden noch nicht bereitgestellt. Sie müssen vor kommerziellem Start oder Verkauf ergänzt und geprüft werden. Aus der Support-E-Mail werden keine Firma oder Adresse abgeleitet.",
             )}
           </p>
           <h2>{tr("Independent product", "Unabhängiges Produkt")}</h2>

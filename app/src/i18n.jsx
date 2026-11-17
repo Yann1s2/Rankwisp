@@ -71,8 +71,8 @@ export function errorText(code, locale) {
       "Ein bestehendes Konto verwendet diese E-Mail. Kontaktiere den Support, um es sicher zu verknüpfen.",
     ],
     GOOGLE_NOT_CONFIGURED: [
-      "Google sign-in is not available yet. Use email or try again later.",
-      "Google-Anmeldung ist noch nicht verfügbar. Nutze E-Mail oder versuche es später.",
+      "Google sign-in is not available yet. Please try again later or contact support.",
+      "Google-Anmeldung ist noch nicht verfügbar. Versuche es später oder kontaktiere den Support.",
     ],
     GOOGLE_ALREADY_PENDING: [
       "A Google sign-in is already open. Complete or cancel it first.",
@@ -132,8 +132,8 @@ export function errorText(code, locale) {
       "Deine Testphase ist beendet. Du kannst weiterhin alle Daten lesen und exportieren.",
     ],
     PAYMENTS_NOT_CONFIGURED: [
-      "Purchases are not available in this local preview.",
-      "Käufe sind in dieser lokalen Vorschau noch nicht verfügbar.",
+      "Purchases are not available in this preview.",
+      "Käufe sind in dieser Vorschau noch nicht verfügbar.",
     ],
     REFRESH_RUNNING: [
       "This project is already refreshing.",
