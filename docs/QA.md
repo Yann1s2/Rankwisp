@@ -17,7 +17,7 @@ Apple sign-in is implemented in web, desktop and iOS bridge code, but is **not l
 The Apple Developer registration is prepared; identifier/key creation awaits approval.
 Signed-provider tests cover the form-post callback, independent browser state, token
 validation, private relay email, encrypted grant storage/revocation, native proof/replay,
-cancellation and refusing automatic email linking. Real Apple account login is still
+cancellation and refusing automatic email linking. Native failure callbacks include a device return link and preserve the specific cancellation/account-link error. Real Apple account login is still
 required after activation. iOS physical-device and Windows runtime checks remain open.
 
 Live authenticated onboarding exposed Apple's HTTP 429 response from the hosted provider
@@ -29,7 +29,7 @@ bypass its CDN; response cache/date provenance is retained. The live API now ret
 `APPLE_RATE_LIMIT`, not a false network error. An additional native lookup by the real app ID returned `APPLE_UNAVAILABLE` with HTTP 503 and a readable provider error. Hosted onboarding is still limited by
 Apple's provider response; this is not recorded as a successful live measurement.
 
-Validation: 42 Node tests, 24 workerd tests 13 browser tests, 8 marketing tests and 10 native-bridge tests passed. These include
+Validation: 42 Node tests, 26 workerd tests 13 browser tests, 8 marketing tests and 10 native-bridge tests passed. These include
 provider fixtures; the real Google flow above is separate evidence. Distribution remains
 an unsigned preview, not a notarized or commercially approved release. AI generation,
 purchases and Apple login activation are still pending.

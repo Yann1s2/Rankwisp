@@ -307,3 +307,65 @@ it("Apple cancellation creates no account and matching Google email does not mer
     false,
   );
 });
+
+it.each(["cancelled", "link_required"])(
+  "native Apple %s returns to the originating device without a session",
+  async (reason) => {
+    const verifier = randomToken();
+    const post = (path, body) =>
+      call(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const pending = await (
+      await post("/api/auth/apple/native/start", {
+        challenge: await challengeFor(verifier),
+        platform: "desktop",
+      })
+    ).json();
+    const start = await begin(pending.ticket);
+    if (reason === "link_required") {
+      const email = "collision-" + crypto.randomUUID() + "@example.test";
+      await env.IDENTITY.prepare("INSERT INTO users VALUES(?,?,?,?,?)")
+        .bind(
+          crypto.randomUUID(),
+          crypto.randomUUID(),
+          email,
+          Date.now(),
+          "web",
+        )
+        .run();
+      await mockProvider(start.nonce, { email });
+    }
+    const response = await callback(
+      start,
+      reason === "cancelled"
+        ? { error: "user_cancelled_authorize" }
+        : undefined,
+    );
+    const html = await response.text();
+    const code = html.match(/&amp;code=([A-Za-z0-9_-]{43})/)[1];
+    expect(html).toContain("Return to Rankwisp");
+    expect(html).not.toContain("You’re signed in.");
+    const result = await post("/api/auth/apple/native/exchange", {
+      ticket: pending.ticket,
+      verifier,
+      completionCode: code,
+    });
+    expect(result.status).toBe(401);
+    expect(await result.json()).toEqual({
+      error:
+        reason === "cancelled" ? "APPLE_CANCELLED" : "ACCOUNT_LINK_REQUIRED",
+    });
+    expect(
+      (
+        await post("/api/auth/apple/native/exchange", {
+          ticket: pending.ticket,
+          verifier,
+          completionCode: code,
+        })
+      ).status,
+    ).toBe(401);
+  },
+);

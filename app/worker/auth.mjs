@@ -190,7 +190,9 @@ export async function authRoute(request, env) {
       throw fail(
         row.status === "cancelled"
           ? prefix + "_CANCELLED"
-          : prefix + "_AUTH_FAILED",
+          : row.status === "link_required"
+            ? "ACCOUNT_LINK_REQUIRED"
+            : prefix + "_AUTH_FAILED",
         401,
       );
     }
@@ -434,7 +436,13 @@ export async function authRoute(request, env) {
         !/^[A-Za-z0-9_-]{43}$/.test(handoff.handoff_ticket)
       )
         failure = prefix + "_AUTH_FAILED";
-      const completionCode = failure ? null : randomToken();
+      // Failure also needs a device-local return link: the app then displays the
+      // provider cancellation/linking error instead of waiting for its timeout.
+      const completionCode = /^[A-Za-z0-9_-]{43}$/.test(
+        handoff?.handoff_ticket || "",
+      )
+        ? randomToken()
+        : null;
       await env.IDENTITY.prepare(
         `UPDATE ${nativeTable} SET status=?,user_id=?,completion_hash=? WHERE ticket_hash=? AND expires>?`,
       )
@@ -442,7 +450,9 @@ export async function authRoute(request, env) {
           failure
             ? failure === prefix + "_CANCELLED"
               ? "cancelled"
-              : "failed"
+              : failure === "ACCOUNT_LINK_REQUIRED"
+                ? "link_required"
+                : "failed"
             : "complete",
           user?.id || null,
           completionCode ? hash(completionCode) : null,
@@ -451,12 +461,18 @@ export async function authRoute(request, env) {
         )
         .run();
       headers.set("Content-Type", "text/html; charset=utf-8");
+      const message =
+        failure === "ACCOUNT_LINK_REQUIRED"
+          ? "This email already uses another sign-in provider. Return to Rankwisp and use your original sign-in method."
+          : failure
+            ? "Return to Rankwisp to continue or try again."
+            : "Complete sign-in in the Rankwisp app on this device.";
       headers.set(
         "Content-Security-Policy",
         "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
       );
       return new Response(
-        `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Rankwisp sign-in</title><body style="background:#fff8f0;color:#1e1e24;font:18px system-ui;max-width:34rem;margin:18vh auto;padding:24px"><h1>${failure ? "Sign-in was not completed." : "You’re signed in."}</h1><p>${failure ? "Return to Rankwisp and try again." : "Complete sign-in in the Rankwisp app on this device."}</p>${completionCode ? `<a style="display:inline-block;background:#111d4a;color:#fff8f0;padding:14px 22px;border-radius:16px;text-decoration:none" href="rankwisp://auth/complete#ticket=${handoff.handoff_ticket}&amp;code=${completionCode}">Return to Rankwisp</a><p style="font-size:14px">Open the installed Rankwisp app. Do not copy or share this sign-in link.</p>` : ""}</body></html>`,
+        `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Rankwisp sign-in</title><body style="background:#edf2f4;color:#2b2d42;font:18px system-ui;max-width:34rem;margin:18vh auto;padding:24px"><h1>${failure ? "Sign-in was not completed." : "You’re signed in."}</h1><p>${message}</p>${completionCode ? `<a style="display:inline-block;background:#2b2d42;color:#edf2f4;padding:14px 22px;border-radius:16px;text-decoration:none" href="rankwisp://auth/complete#ticket=${handoff.handoff_ticket}&amp;code=${completionCode}">Return to Rankwisp</a><p style="font-size:14px">Open the installed Rankwisp app. Do not copy or share this sign-in link.</p>` : ""}</body></html>`,
         { headers },
       );
     }
