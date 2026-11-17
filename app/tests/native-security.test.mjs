@@ -41,6 +41,9 @@ test('native auth permits only an exact configured backend start ticket', () => 
   const ticket='a'.repeat(43);
   const start=origin+'/api/auth/google/start?ticket='+ticket;
   assert.equal(googleAuthURL(start,origin),start);
+  const apple=start.replace("/google/", "/apple/");
+  assert.equal(googleAuthURL(apple,origin),apple);
+  for(const invalid of [apple.replace("/start", "/callback"), apple+"&next=https://evil.test", apple.replace("/apple/", "/other/")]) assert.throws(()=>googleAuthURL(invalid,origin));
   assert.throws(()=>googleAuthURL(start));
   for(const url of [start.replace('rankwisp.pages.dev','rankwisp.pages.dev.evil.test'),start+'&next=https://evil.test',start+'&ticket='+ticket,start.replace('/start','/callback'),start.replace(ticket,'short'),start+'#fragment',start.replace('https://','http://')]) assert.throws(()=>googleAuthURL(url,origin));
   assert.equal(googleAuthURL('http://127.0.0.1:4318/api/auth/google/start?ticket='+ticket,apiOrigin({apiOrigin:'http://127.0.0.1:4318',development:true})), 'http://127.0.0.1:4318/api/auth/google/start?ticket='+ticket);

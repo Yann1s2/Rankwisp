@@ -38,6 +38,7 @@ import {
   Store,
   native,
   beginGoogleSignIn,
+  beginAppleSignIn,
   retrySecureSession,
 } from "./api";
 import { useLocale, errorText } from "./i18n";
@@ -1800,7 +1801,7 @@ function Auth({ onReady, config, notice, onRetry }) {
   });
   const authController = useRef(null);
   useEffect(() => () => authController.current?.abort(), []);
-  const [googleBusy, setGoogleBusy] = useState(false);
+  const [activeProvider, setActiveProvider] = useState(null);
   const [emailOpen, setEmailOpen] = useState(false),
     [register, setRegister] = useState(false),
     [email, setEmail] = useState(""),
@@ -1814,6 +1815,12 @@ function Auth({ onReady, config, notice, onRetry }) {
         "GOOGLE_CANCELLED",
         "ACCOUNT_LINK_REQUIRED",
         "GOOGLE_AUTH_FAILED",
+        "GOOGLE_EXPIRED",
+        "APPLE_NOT_CONFIGURED",
+        "APPLE_CANCELLED",
+        "APPLE_AUTH_FAILED",
+        "APPLE_EXPIRED",
+        "APPLE_ALREADY_PENDING",
       ].includes(code)
         ? errorText(code, locale)
         : "";
@@ -1825,23 +1832,26 @@ function Auth({ onReady, config, notice, onRetry }) {
       history.replaceState(null, "", url.pathname + url.search + url.hash);
     }
   }, []);
-  async function google() {
+  async function signIn(provider) {
+    if (busy || authController.current) return;
     setBusy(true);
-    setGoogleBusy(true);
+    setActiveProvider(provider);
     setError("");
     authController.current = new AbortController();
     try {
-      await beginGoogleSignIn({ signal: authController.current.signal });
+      const begin = provider === "apple" ? beginAppleSignIn : beginGoogleSignIn;
+      await begin({ signal: authController.current.signal });
       if (native) await onReady();
     } catch (e) {
       setError(errorText(e.message, locale));
     } finally {
       setBusy(false);
-      setGoogleBusy(false);
+      setActiveProvider(null);
       authController.current = null;
     }
   }
   async function retry() {
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -1854,6 +1864,7 @@ function Auth({ onReady, config, notice, onRetry }) {
   }
   async function submit(e) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -1943,9 +1954,10 @@ function Auth({ onReady, config, notice, onRetry }) {
         <Button
           className="google-button"
           variant="secondary"
-          onClick={google}
-          loading={busy}
-          disabled={config.googleConfigured === false}
+          onClick={() => signIn("google")}
+          loading={activeProvider === "google"}
+          aria-busy={activeProvider === "google"}
+          disabled={busy || config.googleConfigured === false}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -1967,7 +1979,27 @@ function Auth({ onReady, config, notice, onRetry }) {
           </svg>
           {tr("Continue with Google", "Mit Google fortfahren")}
         </Button>
-        {googleBusy && native && (
+        <Button
+          className="apple-button"
+          onClick={() => signIn("apple")}
+          loading={activeProvider === "apple"}
+          aria-busy={activeProvider === "apple"}
+          disabled={busy || config.appleConfigured !== true}
+          aria-describedby={config.appleConfigured !== true ? "apple-availability" : undefined}
+        >
+          {/* Official Apple logo-only button artwork; bundled to avoid a third-party request.
+              https://appleid.cdn-apple.com/appleid/button/logo?color=white&height=32&width=32 */}
+          <img width="30" height="30" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAAAXNSR0IArs4c6QAAAUBJREFUSInt18GNgzAQBdA/aO82FQQqWKgA6CAdoFSCUwmUQAl0gKkAdxBSwd9LciW2QkBaZSROaPzkbxsL4FEkDcmRn6uRZPP05IFaAL/Yp6yI5BFJsyMKABlJIzvP9llWSHJnFAAQHYFuBi/Lsi9srUWe5+i6Lrz5nYNZFAWVUpznObj3rRlrrTEMA5IkCe4Ngo0xiOMYcRzjcrkgTVNUVQURQVVVsNb6D+YbTdM0BLD6tG3rHbU3rJRaRYui8EbJgDW+3++r78uy9I8ZG35AnHNhDb7RnE6n1ai11hxH/1vVG67r+uXm0lpvD8/z/BKu63p7mFw/Ukop3m4377F+QvaDMQbLssA5h/P5jCRJ0Pc9nHMwxkBr7T3W9z7+wv8Tng5wpwhAfwDcH/ELM4lIFgGAiGQArvhs7BOA68PCH+OXVCbGYKn8AAAAAElFTkSuQmCC" />
+          {tr("Continue with Apple", "Mit Apple fortfahren")}
+        </Button>
+        {activeProvider && (
+          <p className="auth-provider-progress" role="status">
+            {activeProvider === "apple"
+              ? tr("Complete your Apple sign-in in the browser.", "Schliesse deine Apple-Anmeldung im Browser ab.")
+              : tr("Complete your Google sign-in in the browser.", "Schliesse deine Google-Anmeldung im Browser ab.")}
+          </p>
+        )}
+        {activeProvider && native && (
           <button
             className="text-button auth-cancel"
             onClick={() => authController.current?.abort()}
@@ -1988,10 +2020,16 @@ function Auth({ onReady, config, notice, onRetry }) {
                 )}
           </p>
         )}
+        {config.appleConfigured !== true && (
+          <p id="apple-availability" className="auth-provider-note">
+            {tr("Apple sign-in is not configured for this service yet.", "Apple-Anmeldung ist für diesen Dienst noch nicht eingerichtet.")}
+          </p>
+        )}
         {config.authProvider !== "google" && (
           <button
             className="email-disclosure"
             aria-expanded={emailOpen}
+            disabled={busy}
             onClick={() => setEmailOpen(!emailOpen)}
           >
             <Mail size={15} />
@@ -2038,7 +2076,7 @@ function Auth({ onReady, config, notice, onRetry }) {
                   />
                 </label>
               )}
-              <Button type="submit" loading={busy}>
+              <Button type="submit" loading={busy && !activeProvider} disabled={busy}>
                 {register
                   ? tr("Start my 24 days", "Meine 24 Tage starten")
                   : tr("Sign in", "Anmelden")}{" "}
@@ -2047,6 +2085,7 @@ function Auth({ onReady, config, notice, onRetry }) {
             </form>
             <button
               className="text-button auth-toggle"
+              disabled={busy}
               onClick={() => {
                 setRegister(!register);
                 setError("");
@@ -2068,7 +2107,7 @@ function Auth({ onReady, config, notice, onRetry }) {
           {tr("Take a look around first", "Zuerst einen Blick hineinwerfen")}{" "}
           <ArrowUpRight size={14} />
         </a>
-        <button className="text-button" onClick={() => setIntroOpen(true)}>{tr("A quick introduction", "Eine kurze Einführung")}</button>
+        <button className="text-button" disabled={busy} onClick={() => setIntroOpen(true)}>{tr("A quick introduction", "Eine kurze Einführung")}</button>
         <p className="auth-fine">
           {tr(
             "Development preview. Purchases are not yet open.",
@@ -2379,7 +2418,8 @@ function SettingsPage({
     [deleteOpen, setDeleteOpen] = useState(false),
     [password, setPassword] = useState(""),
     [recoveries, setRecoveries] = useState(null);
-  const googleOnly =
+  const signInProvider = (me.authProvider || me.account?.authProvider) === "apple" ? "apple" : "google";
+  const socialOnly =
     me.hasPassword === false || me.account?.hasPassword === false;
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   useEffect(() => {
@@ -2757,14 +2797,14 @@ function SettingsPage({
           )}
         </p>
         <div className="settings-actions">
-          {!googleOnly && (
+          {!socialOnly && (
             <Button variant="secondary" onClick={() => setChangeOpen(true)}>
               {tr("Change password", "Passwort ändern")}
             </Button>
           )}
-          {googleOnly && (
+          {socialOnly && (
             <span className="pill">
-              {tr("Signed in with Google", "Mit Google angemeldet")}
+              {signInProvider === "apple" ? tr("Signed in with Apple", "Mit Apple angemeldet") : tr("Signed in with Google", "Mit Google angemeldet")}
             </span>
           )}
           <Button variant="danger" onClick={() => setDeleteOpen(true)}>
@@ -2827,7 +2867,7 @@ function SettingsPage({
               "Dies löscht deinen Arbeitsbereich, Importsicherungen und Sitzungen auf diesem Server dauerhaft. Exportiere sie vorher, wenn du sie behalten möchtest. Käufe werden nicht automatisch erstattet.",
             )}
           </p>
-          {googleOnly ? (
+          {socialOnly ? (
             <label className="field">
               {tr("Type DELETE to confirm", "Zur Bestätigung DELETE eingeben")}
               <input
@@ -2836,10 +2876,9 @@ function SettingsPage({
                 autoComplete="off"
               />
               <span>
-                {tr(
-                  "A recent Google sign-in is required. You may be asked to sign in again.",
-                  "Eine aktuelle Google-Anmeldung ist nötig. Möglicherweise musst du dich erneut anmelden.",
-                )}
+                {signInProvider === "apple"
+                  ? tr("A recent Apple sign-in is required. You may be asked to sign in again.", "Eine aktuelle Apple-Anmeldung ist nötig. Möglicherweise musst du dich erneut anmelden.")
+                  : tr("A recent Google sign-in is required. You may be asked to sign in again.", "Eine aktuelle Google-Anmeldung ist nötig. Möglicherweise musst du dich erneut anmelden.")}
               </span>
             </label>
           ) : (
@@ -2858,18 +2897,18 @@ function SettingsPage({
           )}
           <Button
             variant="danger"
-            disabled={googleOnly ? deleteConfirmation !== "DELETE" : !password}
+            disabled={socialOnly ? deleteConfirmation !== "DELETE" : !password}
             onClick={() =>
               action("delete", async () => {
                 try {
                   await api(
                     "/account",
-                    googleOnly ? { confirm: "DELETE" } : { password },
+                    socialOnly ? { confirm: "DELETE" } : { password },
                     "DELETE",
                   );
                 } catch (e) {
-                  if (!googleOnly || e.message !== "REAUTH_REQUIRED") throw e;
-                  await beginGoogleSignIn();
+                  if (!socialOnly || e.message !== "REAUTH_REQUIRED") throw e;
+                  await (signInProvider === "apple" ? beginAppleSignIn : beginGoogleSignIn)();
                   if (native) {
                     await onReauthenticated();
                     setDeleteConfirmation("");

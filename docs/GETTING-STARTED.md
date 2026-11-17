@@ -52,6 +52,7 @@ The basic Apple research flow does not require an OpenAI key, Google OAuth crede
 | --- | --- |
 | Luna suggestions | `OPENAI_API_KEY`, optional `OPENAI_MODEL`; explicit account consent and usage budgets still apply |
 | Google sign-in on Workers | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, exact callback URL and your own Google consent configuration |
+| Apple sign-in on Workers | Services ID, Team ID, Key ID, private key, encryption key and exact callback; see [Backend](CLOUDFLARE-BACKEND.md#sign-in-with-apple) |
 | Payments | Separate Stripe/Apple merchant setup plus legal approval; disabled by default |
 
 For the local server, copy `app/.env.example` to `app/.env` and change only values you understand. `npm run server` loads this ignored file. For Cloudflare, use Worker secrets. **Never put credentials in `VITE_*`, Git, issues or screenshots.**
@@ -66,7 +67,7 @@ Every native archive is a **development preview**, not a signed public-store rel
 - **Windows:** x64 portable ZIP. Not signed and not yet runtime-tested on Windows. No automatic installer or updater is included.
 - **iOS:** Xcode Simulator app, not an IPA for a physical iPhone and not a TestFlight release. The built artifact was visually verified on iOS 18.6.
 
-The native packages point to `https://rank.zhstudio.ch`; hosted Google sign-in remains unconfigured. They are useful for exploring the native demo. To use your own backend, build from source with its HTTPS origin.
+The native packages point to `https://rank.zhstudio.ch`; Google sign-in is configured and tested on web/macOS with version 0.2.2. Apple sign-in is implemented but awaits activation. Hosted Apple Search requests currently encounter provider rate limits; the local setup above is still available. To use your own backend, build from source with its HTTPS origin.
 
 Compare downloaded ZIP files against `SHA256SUMS-0.2.0.txt` on the release page:
 

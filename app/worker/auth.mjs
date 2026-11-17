@@ -1,3 +1,9 @@
+import {
+  appleConfigured,
+  appleClientSecret,
+  verifyAppleIDToken,
+  storeAppleGrant,
+} from "./apple-provider.mjs";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { hash } from "../server/db-core.mjs";
 import { readLimited } from "./router.mjs";
@@ -98,6 +104,7 @@ export async function verifyGoogleIDToken(
     payload.email_verified !== true ||
     typeof payload.sub !== "string" ||
     !payload.sub ||
+    payload.sub.startsWith("apple:") ||
     typeof payload.email !== "string" ||
     !payload.email.includes("@") ||
     payload.email.length > 254 ||
@@ -106,12 +113,31 @@ export async function verifyGoogleIDToken(
     throw fail("GOOGLE_TOKEN_INVALID", 401);
   return { sub: payload.sub, email: payload.email.toLowerCase() };
 }
-export async function googleRoute(request, env) {
+export async function authRoute(request, env) {
+  const provider = new URL(request.url).pathname.startsWith("/api/auth/apple/")
+    ? "apple"
+    : "google";
+  const apple = provider === "apple";
+  const prefix = provider.toUpperCase();
+  const configured = apple ? appleConfigured(env) : googleConfigured(env);
+  const clientId = apple ? env.APPLE_CLIENT_ID : env.GOOGLE_CLIENT_ID;
+  const redirectURI = apple
+    ? env.APPLE_REDIRECT_URI || env.PUBLIC_ORIGIN + "/api/auth/apple/callback"
+    : callbackURI(env);
+  const stateTable = apple ? "apple_oauth_states" : "oauth_states";
+  const nativeTable = apple ? "apple_native_auth" : "native_auth";
+  const bindingCookie = (value, secure) =>
+    apple
+      ? `rankwisp_apple_oauth=${value}; Path=/api/auth/apple; HttpOnly; SameSite=None; Secure; Max-Age=600`
+      : binderCookie(value, secure);
   const url = new URL(request.url),
     path = url.pathname,
     secure = new URL(env.PUBLIC_ORIGIN).protocol === "https:";
-  if (path === "/api/auth/google/native/start" && request.method === "POST") {
-    if (!googleConfigured(env)) throw fail("GOOGLE_NOT_CONFIGURED", 503);
+  if (
+    path === `/api/auth/${provider}/native/start` &&
+    request.method === "POST"
+  ) {
+    if (!configured) throw fail(prefix + "_NOT_CONFIGURED", 503);
     const body = await readJSON(request);
     if (
       !/^[A-Za-z0-9_-]{43}$/.test(body.challenge) ||
@@ -120,7 +146,7 @@ export async function googleRoute(request, env) {
       throw fail("INVALID_INPUT");
     const ticket = randomToken();
     await env.IDENTITY.prepare(
-      "INSERT INTO native_auth(ticket_hash,challenge,platform,expires,handoff_ticket) VALUES(?,?,?,?,?)",
+      `INSERT INTO ${nativeTable}(ticket_hash,challenge,platform,expires,handoff_ticket) VALUES(?,?,?,?,?)`,
     )
       .bind(
         hash(ticket),
@@ -131,13 +157,13 @@ export async function googleRoute(request, env) {
       )
       .run();
     return json({
-      url: env.PUBLIC_ORIGIN + "/api/auth/google/start?ticket=" + ticket,
+      url: env.PUBLIC_ORIGIN + `/api/auth/${provider}/start?ticket=` + ticket,
       ticket,
       expiresIn: 600,
     });
   }
   if (
-    path === "/api/auth/google/native/exchange" &&
+    path === `/api/auth/${provider}/native/exchange` &&
     request.method === "POST"
   ) {
     const { ticket, verifier, completionCode } = await readJSON(request);
@@ -149,18 +175,22 @@ export async function googleRoute(request, env) {
       throw fail("INVALID_INPUT");
     const challenge = await challengeFor(verifier),
       row = await env.IDENTITY.prepare(
-        "SELECT * FROM native_auth WHERE ticket_hash=? AND expires>?",
+        `SELECT * FROM ${nativeTable} WHERE ticket_hash=? AND expires>?`,
       )
         .bind(hash(ticket), Date.now())
         .first();
     if (!row || row.challenge !== challenge) throw fail("AUTH_EXPIRED", 401);
     if (row.status === "pending") return json({ status: "pending" }, 202);
     if (row.status !== "complete") {
-      await env.IDENTITY.prepare("DELETE FROM native_auth WHERE ticket_hash=?")
+      await env.IDENTITY.prepare(
+        `DELETE FROM ${nativeTable} WHERE ticket_hash=?`,
+      )
         .bind(hash(ticket))
         .run();
       throw fail(
-        row.status === "cancelled" ? "GOOGLE_CANCELLED" : "GOOGLE_AUTH_FAILED",
+        row.status === "cancelled"
+          ? prefix + "_CANCELLED"
+          : prefix + "_AUTH_FAILED",
         401,
       );
     }
@@ -174,7 +204,7 @@ export async function googleRoute(request, env) {
     )
       throw fail("AUTH_COMPLETION_INVALID", 401);
     const consumed = await env.IDENTITY.prepare(
-      "DELETE FROM native_auth WHERE ticket_hash=? AND challenge=? AND completion_hash=? AND status='complete' RETURNING user_id",
+      `DELETE FROM ${nativeTable} WHERE ticket_hash=? AND challenge=? AND completion_hash=? AND status='complete' RETURNING user_id`,
     )
       .bind(hash(ticket), challenge, hash(completionCode))
       .first();
@@ -187,11 +217,14 @@ export async function googleRoute(request, env) {
     if (!user) throw fail("AUTH_EXPIRED", 401);
     return json({ token: await makeSession(env, user.id), account: user });
   }
-  if (path === "/api/auth/google/start" && request.method === "GET") {
+  if (path === `/api/auth/${provider}/start` && request.method === "GET") {
     // Bind state and the browser cookie on the same host as the registered callback.
     // Pages aliases must canonicalize before any OAuth state or cookie is created.
     if (url.origin !== new URL(env.PUBLIC_ORIGIN).origin) {
-      const canonical = new URL("/api/auth/google/start", env.PUBLIC_ORIGIN);
+      const canonical = new URL(
+        `/api/auth/${provider}/start`,
+        env.PUBLIC_ORIGIN,
+      );
       const ticket = url.searchParams.get("ticket");
       if (ticket) {
         if (!/^[A-Za-z0-9_-]{43}$/.test(ticket)) throw fail("INVALID_INPUT");
@@ -199,9 +232,9 @@ export async function googleRoute(request, env) {
       }
       return Response.redirect(canonical.href, 303);
     }
-    if (!googleConfigured(env))
+    if (!configured)
       return Response.redirect(
-        env.PUBLIC_ORIGIN + "/app?authError=GOOGLE_NOT_CONFIGURED",
+        env.PUBLIC_ORIGIN + "/app?authError=" + prefix + "_NOT_CONFIGURED",
         303,
       );
     let platform = "web",
@@ -209,7 +242,7 @@ export async function googleRoute(request, env) {
     const ticket = url.searchParams.get("ticket");
     if (ticket) {
       const row = await env.IDENTITY.prepare(
-        "SELECT * FROM native_auth WHERE ticket_hash=? AND status='pending' AND expires>?",
+        `SELECT * FROM ${nativeTable} WHERE ticket_hash=? AND status='pending' AND expires>?`,
       )
         .bind(hash(ticket), Date.now())
         .first();
@@ -223,7 +256,7 @@ export async function googleRoute(request, env) {
       verifier = randomToken();
     const returnTo = "/app";
     await env.IDENTITY.prepare(
-      "INSERT INTO oauth_states VALUES(?,?,?,?,?,?,?,?)",
+      `INSERT INTO ${stateTable} VALUES(?,?,?,?,?,?,?,?)`,
     )
       .bind(
         hash(state),
@@ -236,34 +269,62 @@ export async function googleRoute(request, env) {
         Date.now() + 600000,
       )
       .run();
-    const destination = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    const destination = new URL(
+      apple
+        ? "https://appleid.apple.com/auth/authorize"
+        : "https://accounts.google.com/o/oauth2/v2/auth",
+    );
     Object.entries({
-      client_id: env.GOOGLE_CLIENT_ID,
-      redirect_uri: callbackURI(env),
+      client_id: clientId,
+      redirect_uri: redirectURI,
       response_type: "code",
-      scope: "openid email profile",
+      scope: apple ? "email" : "openid email profile",
       state,
       nonce,
-      code_challenge: await challengeFor(verifier),
-      code_challenge_method: "S256",
-      prompt: "select_account",
+      ...(apple
+        ? { response_mode: "form_post" }
+        : {
+            code_challenge: await challengeFor(verifier),
+            code_challenge_method: "S256",
+            prompt: "select_account",
+          }),
     }).forEach(([k, v]) => destination.searchParams.set(k, v));
     return new Response(null, {
       status: 302,
       headers: {
         Location: destination.href,
-        "Set-Cookie": binderCookie(binder, secure),
+        "Set-Cookie": bindingCookie(binder, secure),
         "Cache-Control": "no-store",
         "Referrer-Policy": "no-referrer",
       },
     });
   }
-  if (path === "/api/auth/google/callback" && request.method === "GET") {
-    const state = url.searchParams.get("state"),
-      binder = cookie(request, "rankwisp_oauth");
+  if (
+    path === `/api/auth/${provider}/callback` &&
+    request.method === (apple ? "POST" : "GET")
+  ) {
+    const params = apple
+      ? new URLSearchParams(
+          new TextDecoder().decode(await readLimited(request, 16384)),
+        )
+      : url.searchParams;
+    if (
+      apple &&
+      !request.headers
+        .get("content-type")
+        ?.startsWith("application/x-www-form-urlencoded")
+    )
+      throw fail("INVALID_INPUT");
+    if (["state", "code", "error"].some((key) => params.getAll(key).length > 1))
+      throw fail("INVALID_INPUT");
+    const state = params.get("state"),
+      binder = cookie(
+        request,
+        apple ? "rankwisp_apple_oauth" : "rankwisp_oauth",
+      );
     if (!state || !binder) throw fail("AUTH_STATE_INVALID", 401);
     const saved = await env.IDENTITY.prepare(
-      "DELETE FROM oauth_states WHERE state_hash=? AND browser_hash=? AND expires>? RETURNING *",
+      `DELETE FROM ${stateTable} WHERE state_hash=? AND browser_hash=? AND expires>? RETURNING *`,
     )
       .bind(hash(state), hash(binder), Date.now())
       .first();
@@ -271,40 +332,55 @@ export async function googleRoute(request, env) {
     let failure = null,
       user;
     try {
-      if (url.searchParams.has("error"))
+      if (params.has("error"))
         throw fail(
-          url.searchParams.get("error") === "access_denied"
-            ? "GOOGLE_CANCELLED"
-            : "GOOGLE_AUTH_FAILED",
+          ["access_denied", "user_cancelled_authorize"].includes(
+            params.get("error"),
+          )
+            ? prefix + "_CANCELLED"
+            : prefix + "_AUTH_FAILED",
           401,
         );
-      const code = url.searchParams.get("code");
-      if (!code || code.length > 4000) throw fail("GOOGLE_AUTH_FAILED", 401);
-      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          code,
-          client_id: env.GOOGLE_CLIENT_ID,
-          client_secret: env.GOOGLE_CLIENT_SECRET,
-          redirect_uri: callbackURI(env),
-          grant_type: "authorization_code",
-          code_verifier: saved.verifier,
-        }),
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!tokenResponse.ok) throw fail("GOOGLE_AUTH_FAILED", 401);
+      const code = params.get("code");
+      if (!code || code.length > 4000) throw fail(prefix + "_AUTH_FAILED", 401);
+      const tokenResponse = await fetch(
+        apple
+          ? "https://appleid.apple.com/auth/token"
+          : "https://oauth2.googleapis.com/token",
+        {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            code,
+            client_id: clientId,
+            client_secret: apple
+              ? await appleClientSecret(env)
+              : env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: redirectURI,
+            grant_type: "authorization_code",
+            ...(apple ? {} : { code_verifier: saved.verifier }),
+          }),
+          signal: AbortSignal.timeout(12000),
+        },
+      );
+      if (!tokenResponse.ok) throw fail(prefix + "_AUTH_FAILED", 401);
       const tokenData = await readJSON(tokenResponse, 65536);
       if (typeof tokenData.id_token !== "string")
-        throw fail("GOOGLE_AUTH_FAILED", 401);
-      const identity = await verifyGoogleIDToken(tokenData.id_token, {
-        clientId: env.GOOGLE_CLIENT_ID,
-        nonce: saved.nonce,
-      });
+        throw fail(prefix + "_AUTH_FAILED", 401);
+      const identity = await (apple ? verifyAppleIDToken : verifyGoogleIDToken)(
+        tokenData.id_token,
+        {
+          clientId,
+          nonce: saved.nonce,
+        },
+      );
+      // Legacy google_sub is retained to keep deployed Google versions compatible.
+      // Apple subjects use a reserved namespace and never link accounts by email.
+      const subjectKey = apple ? "apple:" + identity.sub : identity.sub;
       user = await env.IDENTITY.prepare(
         "SELECT * FROM users WHERE google_sub=?",
       )
-        .bind(identity.sub)
+        .bind(subjectKey)
         .first();
       if (!user) {
         const existing = await env.IDENTITY.prepare(
@@ -317,14 +393,15 @@ export async function googleRoute(request, env) {
         await env.IDENTITY.prepare(
           "INSERT INTO users VALUES(?,?,?,?,?) ON CONFLICT(google_sub) DO NOTHING",
         )
-          .bind(id, identity.sub, identity.email, Date.now(), saved.platform)
+          .bind(id, subjectKey, identity.email, Date.now(), saved.platform)
           .run();
         user = await env.IDENTITY.prepare(
           "SELECT * FROM users WHERE google_sub=?",
         )
-          .bind(identity.sub)
+          .bind(subjectKey)
           .first();
       }
+      if (apple) await storeAppleGrant(env, user.id, tokenData.refresh_token);
       await env.ACCOUNTS.getByName(user.id).initialize({
         id: user.id,
         email: user.email,
@@ -332,23 +409,23 @@ export async function googleRoute(request, env) {
         platform: user.platform,
       });
     } catch (e) {
-      failure = ["GOOGLE_CANCELLED", "ACCOUNT_LINK_REQUIRED"].includes(
+      failure = [prefix + "_CANCELLED", "ACCOUNT_LINK_REQUIRED"].includes(
         e.message,
       )
         ? e.message
-        : "GOOGLE_AUTH_FAILED";
+        : prefix + "_AUTH_FAILED";
     }
     const headers = new Headers({
       "Cache-Control": "no-store",
       "Referrer-Policy": "no-referrer",
-      "Set-Cookie": binderCookie("", secure).replace(
+      "Set-Cookie": bindingCookie("", secure).replace(
         "Max-Age=600",
         "Max-Age=0",
       ),
     });
     if (saved.native_ticket) {
       const handoff = await env.IDENTITY.prepare(
-        "SELECT handoff_ticket FROM native_auth WHERE ticket_hash=? AND expires>?",
+        `SELECT handoff_ticket FROM ${nativeTable} WHERE ticket_hash=? AND expires>?`,
       )
         .bind(saved.native_ticket, Date.now())
         .first();
@@ -356,14 +433,14 @@ export async function googleRoute(request, env) {
         !handoff?.handoff_ticket ||
         !/^[A-Za-z0-9_-]{43}$/.test(handoff.handoff_ticket)
       )
-        failure = "GOOGLE_AUTH_FAILED";
+        failure = prefix + "_AUTH_FAILED";
       const completionCode = failure ? null : randomToken();
       await env.IDENTITY.prepare(
-        "UPDATE native_auth SET status=?,user_id=?,completion_hash=? WHERE ticket_hash=? AND expires>?",
+        `UPDATE ${nativeTable} SET status=?,user_id=?,completion_hash=? WHERE ticket_hash=? AND expires>?`,
       )
         .bind(
           failure
-            ? failure === "GOOGLE_CANCELLED"
+            ? failure === prefix + "_CANCELLED"
               ? "cancelled"
               : "failed"
             : "complete",

@@ -164,3 +164,20 @@ test("public landing and download pages have no serious accessibility violations
     ).toEqual([]);
   }
 });
+
+test("homepage reports actual Google configuration instead of a stale launch warning", async ({
+  page,
+}) => {
+  for (const googleConfigured of [true, false]) {
+    await page.route("**/api/config", (route) =>
+      route.fulfill({ json: { googleConfigured } }),
+    );
+    await page.goto("/en/");
+    await expect(page.locator(".login-readiness")).toContainText(
+      googleConfigured
+        ? "Sign in with Google. No additional password needed."
+        : "Google sign-in is not available on this server yet.",
+    );
+    await page.unroute("**/api/config");
+  }
+});

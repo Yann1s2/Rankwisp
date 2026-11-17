@@ -328,3 +328,29 @@ test("paid quota zero cannot spend checks, telemetry default off, account deleti
     await h.close();
   }
 });
+
+test("Apple rate limiting retains native CORS and a retryable structured response", async () => {
+  const h = await harness({
+    apple: {
+      search: async () => {
+        throw Error("APPLE_RATE_LIMIT");
+      },
+    },
+  });
+  try {
+    const { token } = await h.register("rate@example.test");
+    const response = await h.request("/search?q=app&country=ch", {
+      token,
+      headers: { Origin: "rankwisp://app" },
+    });
+    assert.equal(response.status, 429);
+    assert.deepEqual(response.body, { error: "APPLE_RATE_LIMIT" });
+    assert.equal(
+      response.headers.get("access-control-allow-origin"),
+      "rankwisp://app",
+    );
+    assert.equal(response.headers.get("retry-after"), "60");
+  } finally {
+    await h.close();
+  }
+});

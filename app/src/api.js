@@ -28,14 +28,14 @@ async function bounded(promise, ms, code) {
   try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(fail(code)), ms); })]); }
   finally { clearTimeout(timer); }
 }
-const sessionReady = secureSession ? bounded(secureSession.getSession(), 5000, "SECURE_STORAGE_UNAVAILABLE")
+const sessionReady = secureSession ? bounded(secureSession.getSession(), 65000, "SECURE_STORAGE_UNAVAILABLE")
   .then(value => { token = value || null; })
   .catch(() => { storageError = true; }) : Promise.resolve();
 export async function retrySecureSession() {
   await sessionReady;
   if (!secureSession || !storageError) return;
   try {
-    token = (await bounded(secureSession.getSession(), 5000, "SECURE_STORAGE_UNAVAILABLE")) || null;
+    token = (await bounded(secureSession.getSession(), 65000, "SECURE_STORAGE_UNAVAILABLE")) || null;
     storageError = false;
   } catch { throw fail("SECURE_STORAGE_UNAVAILABLE"); }
 }
@@ -49,7 +49,7 @@ function endpoint(path) {
 async function rememberSession(value) {
   if (!secureSession) { token = value; return; }
   try {
-    await bounded(secureSession.setSession(value), 5000, "SECURE_STORAGE_UNAVAILABLE");
+    await bounded(secureSession.setSession(value), 65000, "SECURE_STORAGE_UNAVAILABLE");
     storageError = false; token = value;
   } catch {
     // Do not tell the user login persisted when their OS rejected secure storage.
@@ -110,20 +110,23 @@ function delay(ms,signal) {
   });
 }
 function base64url(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))).replaceAll("+","-").replaceAll("/","_").replace(/=+$/,""); }
-let googlePending = false;
-export async function beginGoogleSignIn({ signal } = {}) {
+let signInPending = false;
+export const beginGoogleSignIn = (options) => beginProviderSignIn("google", options);
+export const beginAppleSignIn = (options) => beginProviderSignIn("apple", options);
+async function beginProviderSignIn(provider, { signal } = {}) {
+  const codePrefix = provider.toUpperCase();
   if (!native) {
-    const url = new URL(endpoint("/auth/google/start"),window.location.origin);
+    const url = new URL(endpoint(`/auth/${provider}/start`),window.location.origin);
     url.searchParams.set("returnTo","/app/");url.searchParams.set("platform","web");
     window.location.assign(url.href);
     return new Promise(()=>{});
   }
-  if (googlePending) throw fail("GOOGLE_ALREADY_PENDING");
-  googlePending=true;
+  if (signInPending) throw fail(codePrefix + "_ALREADY_PENDING");
+  signInPending=true;
   try {
     const verifier=base64url(crypto.getRandomValues(new Uint8Array(32)));
     const challenge=base64url(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
-    const {url,ticket,expiresIn}=await request("/auth/google/native/start",{challenge,platform:ios?"ios":"desktop"},undefined,signal);
+    const {url,ticket,expiresIn}=await request(`/auth/${provider}/native/start`,{challenge,platform:ios?"ios":"desktop"},undefined,signal);
     // The browser delivers a second secret through this device's URL handler.
     // Polling with the public ticket and original verifier alone cannot obtain a
     // session, even if someone forwards the sign-in link to another device.
@@ -146,19 +149,19 @@ export async function beginGoogleSignIn({ signal } = {}) {
       cancelCompletion = () => rejectCompletion(fail("REQUEST_CANCELLED"));
       if(signal?.aborted) throw fail("REQUEST_CANCELLED");
       signal?.addEventListener("abort",cancelCompletion,{once:true});
-      completionTimer=setTimeout(()=>rejectCompletion(fail("GOOGLE_EXPIRED")),Math.min(expiresIn||600,600)*1000);
+      completionTimer=setTimeout(()=>rejectCompletion(fail(codePrefix + "_EXPIRED")),Math.min(expiresIn||600,600)*1000);
       if (window.rankwisp) await window.rankwisp.openAuth(url);
       else await Store.openAuth({url});
       const completionCode = await completion;
-      const result = await request("/auth/google/native/exchange",{ticket,verifier,completionCode},undefined,signal);
-      if (!result.token) throw fail("GOOGLE_AUTH_FAILED");
+      const result = await request(`/auth/${provider}/native/exchange`,{ticket,verifier,completionCode},undefined,signal);
+      if (!result.token) throw fail(codePrefix + "_AUTH_FAILED");
       return result;
     } finally {
       clearTimeout(completionTimer);
       signal?.removeEventListener("abort",cancelCompletion);
       await cleanupListener();
     }
-  } finally { googlePending=false; }
+  } finally { signInPending=false; }
 }
 export function clearToken() {
   token=null;

@@ -11,6 +11,11 @@ export function appleClient(db, { fetcher = fetch, spacing = 3300 } = {}) {
       return { ...JSON.parse(cached.value), cached: true };
     if (pending.has(key)) return pending.get(key);
     const run = tail.then(async () => {
+      const retryAt =
+        db
+          .prepare("SELECT value FROM counters WHERE key='apple-retry-at'")
+          .get()?.value || 0;
+      if (retryAt > Date.now()) throw Error("APPLE_RATE_LIMIT");
       const slot = transaction(db, () => {
         const now = Date.now();
         const previous =
@@ -34,8 +39,23 @@ export function appleClient(db, { fetcher = fetch, spacing = 3300 } = {}) {
       }).forEach(([k, v]) => url.searchParams.set(k, String(v)));
       const response = await fetcher(url, {
         signal: AbortSignal.timeout(20000),
-        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        headers: { Accept: "application/json" },
       });
+      if (response.status === 429) {
+        const retry = response.headers.get("retry-after");
+        const seconds = Number(retry);
+        const requested =
+          retry && Number.isFinite(seconds)
+            ? seconds * 1000
+            : Date.parse(retry || "") - Date.now();
+        const delay = Math.max(
+          60000,
+          Number.isFinite(requested) ? requested : 60000,
+        );
+        db.prepare(
+          "INSERT INTO counters VALUES('apple-retry-at',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        ).run(Date.now() + delay);
+      }
       if (!response.ok)
         throw Error(
           response.status === 429 ? "APPLE_RATE_LIMIT" : "APPLE_UNAVAILABLE",

@@ -52,7 +52,7 @@
   "vars": {
     "NODE_ENV": "production",
     "PUBLIC_ORIGIN": "https://rank.zhstudio.ch",
-    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_CLIENT_ID": "261248287203-44m06a4oioa9ij8k79l6r8ccskn6b83p.apps.googleusercontent.com",
     "GOOGLE_REDIRECT_URI": "https://rank.zhstudio.ch/api/auth/google/callback",
     "ALLOWED_ORIGINS": "https://rank.zhstudio.ch,https://rankwisp.pages.dev,capacitor://localhost,rankwisp://app",
     "OPENAI_MODEL": "gpt-6-luna",

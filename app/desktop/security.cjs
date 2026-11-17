@@ -14,7 +14,7 @@ function googleAuthURL(raw, configuredOrigin = null) {
   if (url.username || url.password || url.hash) throw Error('INVALID_AUTH_URL');
   const google = url.protocol === 'https:' && url.hostname === 'accounts.google.com' && url.pathname === '/o/oauth2/v2/auth' && !url.port;
   const entries = [...url.searchParams.entries()];
-  const ticket = configuredOrigin && url.origin === configuredOrigin && url.pathname === '/api/auth/google/start' && entries.length === 1 && entries[0][0] === 'ticket' && /^[A-Za-z0-9_-]{43}$/.test(entries[0][1]);
+  const ticket = configuredOrigin && url.origin === configuredOrigin && ['/api/auth/google/start', '/api/auth/apple/start'].includes(url.pathname) && entries.length === 1 && entries[0][0] === 'ticket' && /^[A-Za-z0-9_-]{43}$/.test(entries[0][1]);
   if (!google && !ticket) throw Error('INVALID_AUTH_URL');
   return url.href;
 }

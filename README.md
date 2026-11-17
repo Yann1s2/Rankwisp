@@ -8,18 +8,18 @@
 <p align="center">
   <a href="https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml"><img src="https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml/badge.svg?branch=main" alt="Quality checks"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2B2D42" alt="MIT license"></a>
-  <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1"><img src="https://img.shields.io/badge/release-0.2.1_preview-8D99AE?labelColor=2B2D42" alt="0.2.1 preview release"></a>
+  <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1"><img src="https://img.shields.io/badge/release-0.2.2_preview-8D99AE?labelColor=2B2D42" alt="0.2.2 preview release"></a>
 </p>
 
 <p align="center">
   <a href="https://rank.zhstudio.ch/app/?demo=1"><img src="https://img.shields.io/badge/Open_live_demo-2B2D42?style=for-the-badge" alt="Open live demo"></a>
-  <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1"><img src="https://img.shields.io/badge/Download_preview-D80032?style=for-the-badge" alt="Download preview"></a>
+  <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1"><img src="https://img.shields.io/badge/Download_preview-D80032?style=for-the-badge" alt="Download preview"></a>
 </p>
 <p align="center"><a href="#quick-start">Run locally</a> · <a href="docs/GETTING-STARTED.md">Documentation</a> · <a href="CONTRIBUTING.md">Contribute</a> · <a href="README.de.md">Deutsch</a></p>
 
 Rankwisp helps indie iOS developers explore **App Store optimization (ASO)** with inspectable data. Follow keyword positions across 20 storefronts, compare selected competitors and keep a history you can export. The web app, desktop clients and backend are all MIT-licensed.
 
-> **Public preview:** the interactive demo uses fictional data and needs no account. Hosted Google sign-in, AI generation and purchases are not enabled yet. For real research today, [run the local app](#quick-start); Apple search does not require an API key.
+> **Public preview:** the interactive demo uses fictional data and needs no account. Hosted Google sign-in is enabled. Apple sign-in, AI generation and purchases still need activation. The hosted Apple Search API currently returns rate-limit errors; no observations are invented. For real research today, [run the local app](#quick-start); Apple search does not require an API key.
 
 [![Rankwisp dashboard showing keyword positions, visibility history and next steps with clearly labelled demo data](app/public/site/app-overview.webp)](https://rank.zhstudio.ch/app/?demo=1)
 <p align="center"><sub>Actual application screenshot · illustrative demo data · <a href="https://rank.zhstudio.ch/app/?demo=1">explore it yourself</a></sub></p>
@@ -54,12 +54,12 @@ Rankwisp helps indie iOS developers explore **App Store optimization (ASO)** wit
 
 | Platform | Download | What to expect |
 | --- | --- | --- |
-| macOS · Apple Silicon | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.1-preview.1/Rankwisp-0.2.1-mac-arm64.zip) | Packaged app tested on macOS; not Developer-ID signed or notarized |
-| Windows · x64 | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.1-preview.1/Rankwisp-0.2.1-win.zip) | Portable preview; unsigned and not yet runtime-tested on Windows |
+| macOS · Apple Silicon | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.2-preview.1/Rankwisp-0.2.2-mac-arm64.zip) | Packaged app tested on macOS; not Developer-ID signed or notarized |
+| Windows · x64 | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.2-preview.1/Rankwisp-0.2.2-win.zip) | Portable preview; unsigned and not yet runtime-tested on Windows |
 | iOS Simulator · previous 0.2.0 | [Download ZIP](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-ios-simulator.zip) | Ad-hoc signed simulator app, verified on iOS 18.6; not an iPhone installer |
-| Source code | [Download ZIP](https://github.com/Yann1s2/Rankwisp/archive/refs/tags/v0.2.1-preview.1.zip) | Build, inspect or modify under MIT |
+| Source code | [Download ZIP](https://github.com/Yann1s2/Rankwisp/archive/refs/tags/v0.2.2-preview.1.zip) | Build, inspect or modify under MIT |
 
-Native previews connect to the hosted backend, whose Google login is still unavailable. Use their demo to explore the UI, or use the local web setup below for real research. See [release notes and SHA-256 checksums](https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1) before installing. No Linux desktop binary or App Store release is offered yet.
+Native previews connect to the hosted backend. Google sign-in was verified in the browser and packaged macOS app, including session restoration and logout. Apple sign-in is implemented but awaits provider credentials. The local web setup remains available while hosted Apple Search API requests are rate-limited. See [release notes and SHA-256 checksums](https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1) before installing. No Linux desktop binary or App Store release is offered yet.
 
 ## Quick start
 
@@ -90,7 +90,7 @@ Rankwisp records an app’s **one-based position in Apple’s public Search API 
 | Automated checks | Node, workerd, browser, website and native-bridge suites are included; [current CI](https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml) is the source of truth |
 | Live deployment | GitHub → Cloudflare Pages, separate production/preview Workers and data stores |
 | Native verification | Packaged macOS runtime and iOS 18.6 simulator launch checked; Windows runtime remains open |
-| Provider integrations | Google OIDC and AI contracts tested with fixtures; real Google/AI credentials still required |
+| Provider integrations | Google web/macOS login tested live; Apple OIDC tested with signed fixtures, activation pending; AI credentials still required |
 | Security | Public source/history scanned for secrets; [private vulnerability reporting](https://github.com/Yann1s2/Rankwisp/security/advisories/new) enabled |
 
 [Detailed QA and remaining release requirements](docs/QA.md) · [Security policy](SECURITY.md) · [Roadmap](ROADMAP.md)

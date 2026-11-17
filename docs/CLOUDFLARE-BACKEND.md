@@ -1,4 +1,4 @@
-# Cloudflare backend and Google sign-in
+# Cloudflare backend and social sign-in
 
 ## Architecture
 
@@ -50,9 +50,9 @@ password credentials and trial/payment entitlement are not silently converted in
 verified Google ownership. Merchant entitlements require an explicit verified migration
 or the existing signed restore flow.
 
-## Google Cloud Console setup still required
+## Google Cloud Console setup
 
-No Google OAuth client secret is committed. The implemented flow requires an actual
+Production Google sign-in is configured and was exercised with a real account on 17 November 2026, in the browser and packaged macOS app. The consent screen is published. Preview remains unconfigured. No Google OAuth client secret is committed. Self-hosting requires an actual
 Google Cloud project and a **Web application** OAuth client:
 
 1. Configure Google Auth Platform branding/consent: Rankwisp, support `info@zhstudio.ch`,
@@ -82,6 +82,47 @@ npx wrangler secret put GOOGLE_CLIENT_SECRET --config worker/wrangler.jsonc --en
 If credentials are absent, `/api/config` returns `googleConfigured:false`; a real Google
 login is not claimed. No fake success, development bypass account or test token endpoint
 is deployed.
+
+## Sign in with Apple
+
+The web/native implementation and signed-provider tests are complete. Production activation
+is pending creation of the Apple identifiers/key by the account owner. Until the full
+configuration exists, `/api/config` returns `appleConfigured:false`; the app does not
+claim a working Apple login.
+
+Configure in Apple Developer → Certificates, Identifiers & Profiles:
+
+1. Register the explicit primary App ID `ch.zhstudio.rankwisp` with **Sign in with Apple**.
+2. Register Services ID `ch.zhstudio.rankwisp.web`, enable Sign in with Apple, associate
+   that primary App ID, and configure domain `rank.zhstudio.ch` with return URL
+   `https://rank.zhstudio.ch/api/auth/apple/callback` (no wildcard).
+3. Create a dedicated **Sign in with Apple** key for that primary App ID. Download the
+   `.p8` once into protected storage; never commit it or place it in frontend variables.
+4. Set Worker variables `APPLE_CLIENT_ID` (Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
+   and `APPLE_REDIRECT_URI` (exact callback). Install secrets `APPLE_PRIVATE_KEY` (the
+   PEM file contents) and `APPLE_TOKEN_ENCRYPTION_KEY` (base64 of 32 random bytes).
+   Keep the latter stable: it encrypts existing revocable provider grants.
+5. Apply migration `0003_apple_auth.sql` before deploying. It adds separate state/native
+   handoff/grant tables and preserves all existing accounts and histories.
+6. Test real sign-in, cancellation, Hide My Email, logout, restart, native return and
+   account-deletion revocation. Mock-provider tests do not substitute for this step.
+
+Only the `email` scope is requested. The backend signs a five-minute ES256 client secret,
+validates Apple's RS256 ID token, issuer, audience, freshness, nonce and verified email,
+and binds the `form_post` callback to a one-use state and Secure/HttpOnly/SameSite=None
+cookie. Only that exact callback accepts Apple's Origin; general CORS is not widened.
+The normal application session remains Secure/HttpOnly/SameSite=Lax.
+
+Apple subjects use a reserved `apple:` namespace in the legacy identity column. Accounts
+are never automatically merged by email. An email collision asks the user to use their
+original provider. Apple relay addresses are supported. Refresh grants are encrypted
+with AES-GCM and bound to the user ID; account deletion first revokes the Apple grant.
+The native flow uses the same device-bound PKCE/completion-code protections described
+below, with `/api/auth/apple/...` routes. Apple does not receive a provider PKCE parameter.
+
+References: [Apple web configuration](https://developer.apple.com/help/account/capabilities/configure-sign-in-with-apple-for-the-web/),
+[token validation](https://developer.apple.com/documentation/signinwithapplerestapi/generate-and-validate-tokens),
+[token revocation](https://developer.apple.com/documentation/signinwithapplerestapi/revoke-tokens).
 
 ## Authentication protocol
 
@@ -116,7 +157,7 @@ Native:
 5. Exchange `{ticket,verifier,completionCode}`. Both the originating app's PKCE verifier
    and the browser-local completion code are required. A wrong code or verifier does not
    consume the ticket. HTTP 200 returns `{token,account}` and consumes the handoff once.
-6. Store the session token in the native OS secure store. Cancellation/expiry terminates
+6. Store the session token in the native OS secure store. macOS uses asynchronous Electron safeStorage operations, serialized writes and an atomic encrypted file. A pending OS prompt cannot write a session after logout. Cancellation/expiry terminates
    the handoff. Session/provider tokens are never placed in URLs; the custom-scheme
    fragment contains only the one-use completion secret, which is insufficient without
    the app-held verifier. Do not copy or share completion links.

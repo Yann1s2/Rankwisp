@@ -3035,3 +3035,24 @@ h4 {
   .sidebar .trial-card strong { display: block; margin-bottom: 6px; }
   .sidebar .account-chip small { display: none; }
 }
+
+/* Apple's monochrome sign-in treatment is kept separate from product colours. */
+.auth-card .apple-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 10px;
+  gap: 6px;
+  padding-block: 8px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  box-shadow: none;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+.auth-card .apple-button img { flex: none; }
+.auth-card .auth-provider-progress { margin: 10px 0; font-size: 11px; color: var(--ink); }
+.auth-card .auth-provider-note + .auth-provider-note { margin-top: -7px !important; }
+@media (hover: hover) and (pointer: fine) {
+  .auth-card .apple-button:hover { background: #fff; border-color: #000; box-shadow: 0 0 0 1px #000; }
+}

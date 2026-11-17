@@ -1,4 +1,48 @@
-# Qualitäts- und Releaseprüfung — 17. November 2026
+# QA report
+
+## Authentication update — 17 November 2026, 0.2.2
+
+This section supersedes earlier reports that Google sign-in is unconfigured.
+Google OAuth is configured in production and the consent screen is published.
+A real Google account completed the browser login and the packaged macOS system-browser
+handoff. Reload and a full quit/reopen retained the session. Native Sign out returned
+to the unauthenticated screen. No production bypass or synthetic login was used.
+
+The native test exposed a real secure-storage failure: synchronous OS encryption blocked
+the app and exceeded the bridge deadline. Async Electron safeStorage, serialized writes,
+an atomic encrypted file and a matching prompt deadline fix it. Tests cover key rotation,
+locked storage and logout racing an OS prompt; plaintext fallback is not allowed.
+
+Apple sign-in is implemented in web, desktop and iOS bridge code, but is **not live**.
+The Apple Developer registration is prepared; identifier/key creation awaits approval.
+Signed-provider tests cover the form-post callback, independent browser state, token
+validation, private relay email, encrypted grant storage/revocation, native proof/replay,
+cancellation and refusing automatic email linking. Real Apple account login is still
+required after activation. iOS physical-device and Windows runtime checks remain open.
+
+Live authenticated onboarding exposed Apple's HTTP 429 response from the hosted provider
+coordinator. The application previously mapped it to 502, which Cloudflare replaced with
+an HTML error page lacking native CORS headers. It now remains a structured 429 with
+CORS and Retry-After. A persistent coordinator cooldown honors Apple's Retry-After and
+blocks further upstream calls during that interval. Requests no longer force Apple to
+bypass its CDN; response cache/date provenance is retained. The live API now returns
+`APPLE_RATE_LIMIT`, not a false network error. An additional native lookup by the real app ID returned `APPLE_UNAVAILABLE` with HTTP 503 and a readable provider error. Hosted onboarding is still limited by
+Apple's provider response; this is not recorded as a successful live measurement.
+
+Validation: 42 Node tests, 24 workerd tests 13 browser tests, 8 marketing tests and 10 native-bridge tests passed. These include
+provider fixtures; the real Google flow above is separate evidence. Distribution remains
+an unsigned preview, not a notarized or commercially approved release. AI generation,
+purchases and Apple login activation are still pending.
+
+The full dependency audit currently **fails** on the unpatched development dependency
+`picomatch` 4.0.7 ([GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf),
+updated 17 November 2026). npm reports 12 affected dependency-chain entries for this
+one advisory. `npm audit --omit=dev --audit-level=moderate` reports zero vulnerabilities.
+No audit exception or blanket suppression was added; the existing CI audit gate remains
+in place and may fail until an upstream patch is available. A forced Vitest downgrade
+was not applied. Neither production bundles nor user keyword handling use picomatch.
+
+## Earlier verification records
 
 Die App wurde implementiert und tatsächlich auf Cloudflare veröffentlicht. Echte Google-
 Anmeldung, KI-Anbieter und Käufe sind mangels externer Credentials noch nicht freigegeben.

@@ -2,21 +2,21 @@ import {test,expect} from '@playwright/test';
 // Native shell CSP is tested in native-security; localhost test host has a web-only CSP.
 test.use({bypassCSP:true});
 const ticket='t'.repeat(43), code='c'.repeat(43), session='s'.repeat(43);
-async function mockNative(page, storageFailure=false, {skipIntroduction=true}={}) {
+async function mockNative(page, storageFailure=false, {skipIntroduction=true, appleConfigured=true}={}) {
   await page.addInitScript((storageFailure)=>{
     AbortSignal.timeout=undefined;AbortSignal.any=undefined;
     window.fixtureSessionFailure=storageFailure;window.fixtureSessionValue=null;window.authListeners=[];window.openedAuth=[];window.persistedSession=null;
     window.rankwisp={platform:'darwin',getSession:async()=>{if(window.fixtureSessionFailure)throw Error("LOCKED");return window.fixtureSessionValue;},setSession:async(value)=>{window.persistedSession=value;},openAuth:async(url)=>{window.openedAuth.push(url);},onAuthCompleted:(listener)=>{window.authListeners.push(listener);return()=>{window.authListeners=window.authListeners.filter(x=>x!==listener);};}};
   },storageFailure);
-  const calls=[];let authenticated=false;
+  const calls=[];let authenticated=false;let authProvider="google";
   await page.route('**/api/**',async route=>{
     const path=new URL(route.request().url()).pathname;
     if(route.request().headers().authorization==='Bearer '+session) authenticated=true;
-    if(path.endsWith('/config')) return route.fulfill({json:{authProvider:'google',googleConfigured:true}});
-    if(path.endsWith('/native/start')) {calls.push({path,body:route.request().postDataJSON()});return route.fulfill({json:{ticket,url:new URL(route.request().url()).origin+'/api/auth/google/start?ticket='+ticket,expiresIn:600}});}
+    if(path.endsWith('/config')) return route.fulfill({json:{authProvider:'google',googleConfigured:true,appleConfigured}});
+    if(path.endsWith('/native/start')) {authProvider=path.includes('/apple/')?'apple':'google';calls.push({path,body:route.request().postDataJSON()});return route.fulfill({json:{ticket,url:new URL(route.request().url()).origin+'/api/auth/'+authProvider+'/start?ticket='+ticket,expiresIn:600}});}
     if(path.endsWith('/native/exchange')) {calls.push({path,body:route.request().postDataJSON()});authenticated=true;return route.fulfill({json:{token:session}});}
     if(!authenticated)return route.fulfill({status:401,json:{error:'SIGN_IN_REQUIRED'}});
-    if(path.endsWith('/me'))return route.fulfill({json:{account:{id:'native-fixture',email:'native@example.test',hasPassword:false},license:{state:'trial',daysRemaining:24,checksRemaining:120,aiRemaining:8}}});
+    if(path.endsWith('/me'))return route.fulfill({json:{authProvider,account:{id:'native-fixture',email:'native@example.test',hasPassword:false},license:{state:'trial',daysRemaining:24,checksRemaining:120,aiRemaining:8}}});
     if(path.endsWith('/workspace'))return route.fulfill({json:{workspace:{schemaVersion:1,projects:[],automaticUpdates:false},revision:'fixture'}});
     return route.fulfill({json:{ok:true}});
   });
@@ -112,4 +112,73 @@ test('native introduction respects reduced motion while keeping the final chart 
   expect(await page.locator('.welcome-trail path').evaluate(node=>parseFloat(getComputedStyle(node).strokeDashoffset))).toBe(0);
   await page.getByRole('button',{name:'Get started',exact:true}).click();
   await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
+});
+
+
+test('Apple native sign-in completes the real bridge contract and persists a session', async ({page})=>{
+  const calls=await mockNative(page);
+  const apple=page.getByRole('button',{name:'Continue with Apple',exact:true});
+  const google=page.getByRole('button',{name:'Continue with Google',exact:true});
+  await apple.click();
+  await expect.poll(()=>page.evaluate(()=>window.openedAuth.length)).toBe(1);
+  expect(calls.map(call=>call.path)).toEqual(['/api/auth/apple/native/start']);
+  await expect(google).toBeDisabled();
+  await expect(apple).toHaveAttribute('aria-busy','true');
+  await expect(google).toHaveAttribute('aria-busy','false');
+  await expect(page.getByRole('status')).toContainText('Apple sign-in');
+  await page.evaluate(({ticket,code})=>window.authListeners.forEach(fn=>fn({ticket,code})),{ticket,code});
+  await expect(page.getByRole('heading',{name:'Meet your next chapter.'})).toBeVisible();
+  expect(calls.find(call=>call.path.endsWith('/exchange')).path).toBe('/api/auth/apple/native/exchange');
+  expect(await page.evaluate(()=>window.persistedSession)).toBe(session);
+});
+
+test('Apple cancellation unlocks both providers and Google can start afterwards', async ({page})=>{
+  const calls=await mockNative(page);
+  const apple=page.getByRole('button',{name:'Continue with Apple',exact:true});
+  const google=page.getByRole('button',{name:'Continue with Google',exact:true});
+  await apple.click();
+  await expect.poll(()=>page.evaluate(()=>window.openedAuth.length)).toBe(1);
+  await page.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
+  await expect(apple).toBeEnabled();
+  await expect(google).toBeEnabled();
+  expect(await page.evaluate(()=>window.persistedSession)).toBe(null);
+  await google.click();
+  await expect.poll(()=>page.evaluate(()=>window.openedAuth.length)).toBe(2);
+  await expect(apple).toBeDisabled();
+  await expect(apple).toHaveAttribute('aria-busy','false');
+  await expect(google).toHaveAttribute('aria-busy','true');
+  await expect(page.getByRole('status')).toContainText('Google sign-in');
+  expect(calls.map(call=>call.path)).toEqual(['/api/auth/apple/native/start','/api/auth/google/native/start']);
+  await page.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>window.authListeners.length)).toBe(0);
+});
+
+test('Apple unavailable stays disabled and translated without hiding configured Google',async({page})=>{
+  await mockNative(page,false,{appleConfigured:false});
+  await expect(page.getByRole('button',{name:'Continue with Apple',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
+  await expect(page.getByText('Apple sign-in is not configured for this service yet.',{exact:true})).toBeVisible();
+  await page.locator('.auth-language').click();
+  await expect(page.getByRole('button',{name:'Mit Apple fortfahren',exact:true})).toBeDisabled();
+  await expect(page.getByText('Apple-Anmeldung ist für diesen Dienst noch nicht eingerichtet.',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Mit E-Mail fortfahren',exact:true})).toHaveCount(0);
+});
+
+test('Apple account settings use Apple for deletion reauthentication without password fields',async({page})=>{
+  const calls=await mockNative(page);
+  await page.getByRole('button',{name:'Continue with Apple',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>window.openedAuth.length)).toBe(1);
+  await page.evaluate(({ticket,code})=>window.authListeners.forEach(fn=>fn({ticket,code})),{ticket,code});
+  await expect(page.getByRole('heading',{name:'Meet your next chapter.'})).toBeVisible();
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('tab',{name:'Account',exact:true}).click();
+  await expect(page.getByText('Signed in with Apple',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Change password',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Delete my account',exact:true}).click();
+  await page.getByLabel('Type DELETE to confirm',{exact:false}).fill('DELETE');
+  await expect(page.getByText('A recent Apple sign-in is required. You may be asked to sign in again.',{exact:true})).toBeVisible();
+  await page.route('**/api/account',route=>route.fulfill({status:401,json:{error:'REAUTH_REQUIRED'}}));
+  await page.getByRole('button',{name:'Permanently delete my account',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>window.openedAuth.length)).toBe(2);
+  expect(calls.at(-1).path).toBe('/api/auth/apple/native/start');
 });

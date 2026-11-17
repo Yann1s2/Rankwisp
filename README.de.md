@@ -4,14 +4,14 @@
 <p align="center">
 <a href="https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml"><img src="https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml/badge.svg?branch=main" alt="Qualitätsprüfungen"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2B2D42" alt="MIT-Lizenz"></a>
-<a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1"><img src="https://img.shields.io/badge/release-0.2.1_preview-8D99AE?labelColor=2B2D42" alt="0.2.1 Vorabversion"></a>
+<a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1"><img src="https://img.shields.io/badge/release-0.2.2_preview-8D99AE?labelColor=2B2D42" alt="0.2.2 Vorabversion"></a>
 </p>
-<p align="center"><a href="https://rank.zhstudio.ch/app/?demo=1"><img src="https://img.shields.io/badge/Live--Demo_öffnen-2B2D42?style=for-the-badge" alt="Live-Demo öffnen"></a> <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1"><img src="https://img.shields.io/badge/Vorabversion_laden-D80032?style=for-the-badge" alt="Vorabversion herunterladen"></a></p>
+<p align="center"><a href="https://rank.zhstudio.ch/app/?demo=1"><img src="https://img.shields.io/badge/Live--Demo_öffnen-2B2D42?style=for-the-badge" alt="Live-Demo öffnen"></a> <a href="https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1"><img src="https://img.shields.io/badge/Vorabversion_laden-D80032?style=for-the-badge" alt="Vorabversion herunterladen"></a></p>
 <p align="center"><a href="#lokal-starten">Lokal starten</a> · <a href="docs/GETTING-STARTED.md">Dokumentation</a> · <a href="CONTRIBUTING.md">Mitmachen</a> · <a href="README.md">English</a></p>
 
 Rankwisp unterstützt unabhängige iOS-Entwickler bei der **App Store Optimization (ASO)**: Keyword-Positionen in 20 Store-Ländern beobachten, ausgewählte Mitbewerber vergleichen und die eigene Historie exportieren. Web-App, native Clients und Backend sind unter MIT offen verfügbar.
 
-> **Öffentliche Vorabversion:** Die Demo enthält fiktive Daten und braucht kein Konto. Google-Anmeldung, KI-Generierung und Käufe sind im gehosteten Dienst noch nicht aktiviert. Für echte Recherche kannst du die App lokal starten; Apples Suche benötigt keinen API-Key.
+> **Öffentliche Vorabversion:** Die Demo enthält fiktive Daten und braucht kein Konto. Google-Anmeldung ist aktiviert. Apple-Anmeldung, KI-Generierung und Käufe warten noch auf Freischaltung. Die gehostete Apple-Suche meldet derzeit Anfragelimits; Messungen werden nicht erfunden. Für echte Recherche kannst du die App lokal starten; Apples Suche benötigt keinen API-Key.
 
 [![Rankwisp-Dashboard mit Keyword-Positionen und Verlauf; ausdrücklich als Demo gekennzeichnet](app/public/site/app-overview.webp)](https://rank.zhstudio.ch/app/?demo=1)
 
@@ -32,12 +32,12 @@ Am schnellsten geht es mit der **[Browser-Demo](https://rank.zhstudio.ch/app/?de
 
 | Plattform | Download | Stand |
 | --- | --- | --- |
-| macOS · Apple Silicon | [ZIP laden](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.1-preview.1/Rankwisp-0.2.1-mac-arm64.zip) | Gepackte App auf macOS geprüft; ohne Developer-ID-Signatur/Notarisierung |
-| Windows · x64 | [ZIP laden](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.1-preview.1/Rankwisp-0.2.1-win.zip) | Portable Vorabversion; unsigniert, noch nicht auf Windows ausgeführt |
+| macOS · Apple Silicon | [ZIP laden](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.2-preview.1/Rankwisp-0.2.2-mac-arm64.zip) | Gepackte App auf macOS geprüft; ohne Developer-ID-Signatur/Notarisierung |
+| Windows · x64 | [ZIP laden](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.2-preview.1/Rankwisp-0.2.2-win.zip) | Portable Vorabversion; unsigniert, noch nicht auf Windows ausgeführt |
 | iOS-Simulator · vorherige 0.2.0 | [ZIP laden](https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.0-preview.1/Rankwisp-0.2.0-ios-simulator.zip) | Ad hoc signierte Simulator-App, auf iOS 18.6 geprüft; kein iPhone-Installer |
-| Quellcode | [ZIP laden](https://github.com/Yann1s2/Rankwisp/archive/refs/tags/v0.2.1-preview.1.zip) | Unter MIT prüfen, anpassen und selbst bauen |
+| Quellcode | [ZIP laden](https://github.com/Yann1s2/Rankwisp/archive/refs/tags/v0.2.2-preview.1.zip) | Unter MIT prüfen, anpassen und selbst bauen |
 
-Die nativen Vorschauen verbinden sich mit dem gehosteten Backend, dessen Google-Anmeldung noch nicht verfügbar ist. Nutze dort die Demo oder starte für echte Recherche die lokale Web-App. [Versionshinweise und SHA-256-Prüfsummen](https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1) gehören zum Download. Es gibt noch kein Linux-Desktop-Paket und keine App-Store-Version.
+Die nativen Vorschauen verbinden sich mit dem gehosteten Backend. Google-Anmeldung wurde im Browser und in der gepackten macOS-App inklusive Sitzungswiederherstellung und Abmelden geprüft. Apple-Anmeldung ist implementiert, wartet aber auf Anbieter-Zugangsdaten. Für Recherche während des aktuellen Apple-Suchlimits bleibt die lokale Web-App verfügbar. [Versionshinweise und SHA-256-Prüfsummen](https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1) gehören zum Download. Es gibt noch kein Linux-Desktop-Paket und keine App-Store-Version.
 
 ## Lokal starten
 
@@ -63,9 +63,11 @@ Rankwisp erfasst die **einsbasierte Position in Apples öffentlicher Search-API-
 
 ## Nachvollziehbarer Entwicklungsstand
 
-Am Prüfstand der Vorabversion bestanden **Node-, workerd-, Browser-, Website- und Native-Bridge-Tests**. [Aktuelle GitHub-CI](https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml) und [detaillierter Prüfbericht](docs/QA.md) zeigen den Stand. Die Cloudflare-Website und getrennte Produktions-/Vorschau-Backends sind veröffentlicht. Echte Google-/KI-Providerprüfungen, Zahlungsfreigaben, Windows-Laufzeit und Distributionssignierung bleiben offen.
+Am Prüfstand der Vorabversion bestanden **Node-, workerd-, Browser-, Website- und Native-Bridge-Tests**. [Aktuelle GitHub-CI](https://github.com/Yann1s2/Rankwisp/actions/workflows/ci.yml) und [detaillierter Prüfbericht](docs/QA.md) zeigen den Stand. Die Cloudflare-Website und getrennte Produktions-/Vorschau-Backends sind veröffentlicht. Echte Apple-Anmeldung und KI-Providerprüfung, Zahlungsfreigaben, Windows-Laufzeit und Distributionssignierung bleiben offen.
 
 [Roadmap](ROADMAP.md) · [Cloudflare-Betrieb](docs/OPERATIONS.md) · [Backend und OAuth](docs/CLOUDFLARE-BACKEND.md) · [Sicherheit](SECURITY.md)
+
+Der vollständige Abhängigkeits-Audit meldet aktuell eine ungepatchte Build-Werkzeug-Schwachstelle; der Audit der Produktionsabhängigkeiten ist unauffällig. Details und Live-Provider-Limits stehen im [Prüfbericht](docs/QA.md).
 
 ## Mitmachen
 

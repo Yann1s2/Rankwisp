@@ -622,3 +622,17 @@ test("long history and keyword tables scroll inside bounded desktop regions", as
   await page.setViewportSize({width:320,height:568});
   await expect.poll(()=>page.locator(".table-scroll").evaluate(el=>el.clientHeight)).toBeGreaterThanOrEqual(100);
 });
+
+test('Apple cancellation and account-link errors are truthful and localized on hosted auth', async ({page})=>{
+  await page.route('**/api/config',route=>route.fulfill({json:{authProvider:'google',googleConfigured:true,appleConfigured:false}}));
+  await page.goto('/app?authError=APPLE_CANCELLED');
+  await expect(page.getByRole('button',{name:'Continue with Apple',exact:true})).toBeDisabled();
+  await expect(page.getByText('Apple sign-in was cancelled. Your account is unchanged.',{exact:true})).toBeVisible();
+  await expect(page).not.toHaveURL(/authError/);
+  await page.locator('.auth-language').click();
+  await page.goto('/app?authError=ACCOUNT_LINK_REQUIRED');
+  await expect(page.getByText('Ein bestehendes Konto verwendet diese E-Mail. Nutze deine bisherige Anmeldemethode; Konten werden nicht automatisch verknüpft.',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Mit Apple fortfahren',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Mit Google fortfahren',exact:true})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'Mit E-Mail fortfahren',exact:true})).toHaveCount(0);
+});

@@ -1,6 +1,6 @@
 # Betrieb und Deployment
 
-Stand: 17. November 2026. Private Quelle: `Yann1s2/Rankwisp`, Branch `main`.
+Stand: 17. November 2026. Öffentliche Quelle: `Yann1s2/Rankwisp`, Branch `main`.
 Die Website ist öffentlich erreichbar, bleibt aber bis zur Produktfreigabe `noindex`.
 Ein erreichbares Deployment bedeutet noch keine abgeschlossene Google-/Store-Freigabe.
 
@@ -67,13 +67,13 @@ Tests automatisch in die jeweilige Umgebung veröffentlicht. GitHub-Qualitätspr
 laufen bereits unabhängig davon auf Push/PR. Branchschutz kann nach dem ersten grünen
 CI-Lauf mit dem Check `test` eingerichtet werden; kein ungeprüftes Erfinden von Checknamen.
 
-## Fehlende Anbieter-Konfiguration
+## Anbieter-Konfiguration
 
-Google: genaue Console-Schritte und Redirect-URIs in [CLOUDFLARE-BACKEND.md](CLOUDFLARE-BACKEND.md).
+Google ist in Produktion konfiguriert und mit einem echten Konto im Web und auf macOS geprüft. Die Vorschau bleibt getrennt und ohne Google-Client. Genaue Console-Schritte und Redirect-URIs in [CLOUDFLARE-BACKEND.md](CLOUDFLARE-BACKEND.md).
 `GOOGLE_CLIENT_ID` als Worker-Variable; `GOOGLE_CLIENT_SECRET` als Worker-Secret.
 Produktion: `https://rank.zhstudio.ch/api/auth/google/callback`.
 Vorschau: `https://development.rankwisp.pages.dev/api/auth/google/callback`, eigener Client.
-Produktive Google-Konten erst nach Consent-/Domain-Konfiguration testen.
+Apple-Anmeldung: Implementierung vorhanden, Apple-App-ID/Services-ID/Schlüssel noch nicht angelegt. Einrichtung und Secret-Namen stehen im Backend-Dokument. Die Schaltfläche bleibt bis zur vollständigen Einrichtung deaktiviert.
 
 OpenAI: neuen `OPENAI_API_KEY` als Worker-Secret hinterlegen; gewünschtes Modell Luna
 ist konfiguriert. Das offene bzw. früher offengelegte Secret wird nicht wiederverwendet.
@@ -108,7 +108,7 @@ Start in einem Wiederherstellungslauf verifiziert werden; eine vollständige Bac
 Wiederherstellung wurde in dieser Lieferung nicht behauptet.
 
 Accountlöschung ist serverseitig tombstoned, invalidiert Sessions und entfernt den
-Arbeitsbereich. Sie verlangt aktuelle Google-Authentifizierung und explizites DELETE.
+Arbeitsbereich. Sie verlangt aktuelle Authentifizierung beim jeweiligen Anbieter und explizites DELETE.
 Auth-Tokens werden nicht geloggt; Worker-Invocation-Logs sind deaktiviert, um OAuth-
 Callback-Queryparameter nicht versehentlich in Zugriffslogs aufzunehmen.
 

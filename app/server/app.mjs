@@ -226,6 +226,7 @@ export function createApp(
       localPreview: !prod,
       authProvider: "email",
       googleConfigured: false,
+      appleConfigured: false,
       registrationOpen: !prod && !env.INVITE_CODE,
       aiConfigured: !!env.OPENAI_API_KEY,
       paymentsConfigured:
@@ -939,7 +940,25 @@ export function createApp(
   app.use((e, _req, res, _next) => {
     const validation = e instanceof z.ZodError;
     const known = /^[A-Z_]+$/.test(e.message);
-    res.status(validation ? 400 : e.status || 502).json({
+    if (!validation && !known)
+      console.error(
+        JSON.stringify({
+          event: "api_handler_failed",
+          type: e.name,
+          // Stack frames identify the failing code without logging user input or credentials.
+          frames: String(e.stack || "")
+            .split("\n")
+            .slice(1, 5),
+        }),
+      );
+    const providerStatus =
+      e.message === "APPLE_RATE_LIMIT"
+        ? 429
+        : ["APPLE_UNAVAILABLE", "APPLE_INVALID_RESPONSE"].includes(e.message)
+          ? 503
+          : 500;
+    if (e.message === "APPLE_RATE_LIMIT") res.setHeader("Retry-After", "60");
+    res.status(validation ? 400 : e.status || providerStatus).json({
       error: validation
         ? "INVALID_INPUT"
         : known

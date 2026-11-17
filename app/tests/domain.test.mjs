@@ -305,3 +305,38 @@ test("iOS free trial awaits verified StoreKit activation; purchase replay cannot
   );
   db.close();
 });
+
+// Provider cooldown is persisted across coordinator restarts and never creates observations.
+test("Apple honors Retry-After across clients and allows requests after cooldown", async () => {
+  const db = openDB(":memory:");
+  let calls = 0;
+  const fetcher = async (_url, options) => {
+    calls++;
+    assert.equal(options.headers["Cache-Control"], undefined);
+    return calls === 1
+      ? new Response("", { status: 429, headers: { "retry-after": "120" } })
+      : Response.json({ results: [] });
+  };
+  const start = Date.now();
+  try {
+    const first = appleClient(db, { spacing: 0, fetcher });
+    await assert.rejects(first.search("first", "ch"), /APPLE_RATE_LIMIT/);
+    assert.ok(
+      db.prepare("SELECT value FROM counters WHERE key='apple-retry-at'").get()
+        .value >=
+        start + 120000,
+    );
+    const restarted = appleClient(db, { spacing: 0, fetcher });
+    await assert.rejects(
+      restarted.search("different", "ch"),
+      /APPLE_RATE_LIMIT/,
+    );
+    assert.equal(calls, 1);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM cache").get().n, 0);
+    db.prepare("UPDATE counters SET value=0 WHERE key='apple-retry-at'").run();
+    assert.deepEqual((await restarted.search("different", "ch")).results, []);
+    assert.equal(calls, 2);
+  } finally {
+    db.close();
+  }
+});

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, protocol, net, shell, session, safeStorage, ipcMain } = require('electron');
 const { join, resolve } = require('node:path');
-const { existsSync, readFileSync, writeFileSync, renameSync, rmSync } = require('node:fs');
+const { readFileSync } = require('node:fs');
+const { createSessionStore } = require('./session-store.cjs');
 const { pathToFileURL } = require('node:url');
 const { appURL, googleAuthURL, apiOrigin, policy, assetPath, authCompletion, externalURL } = require('./security.cjs');
 
@@ -43,26 +44,14 @@ if (primaryInstance) app.whenReady().then(() => {
   function trusted(event) {
     if (event.senderFrame !== event.sender.mainFrame || !appURL(event.senderFrame?.url)) throw Error('UNTRUSTED_ORIGIN');
   }
+  const sessionStore = createSessionStore(safeStorage, sessionFile);
   ipcMain.handle('rankwisp:get-session', (event) => {
     trusted(event);
-    if (!existsSync(sessionFile)) return '';
-    if (!safeStorage.isEncryptionAvailable()) throw Error('SECURE_STORAGE_UNAVAILABLE');
-    try { return safeStorage.decryptString(readFileSync(sessionFile)); }
-    catch { throw Error('SECURE_STORAGE_UNAVAILABLE'); }
+    return sessionStore.get();
   });
   ipcMain.handle('rankwisp:set-session', (event, value) => {
     trusted(event);
-    if (value === '') { rmSync(sessionFile, { force: true }); return; }
-    if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(value)) throw Error('INVALID_SESSION');
-    if (!safeStorage.isEncryptionAvailable()) throw Error('SECURE_STORAGE_UNAVAILABLE');
-    const temporary = sessionFile + '.tmp';
-    try {
-      writeFileSync(temporary, safeStorage.encryptString(value), { mode: 0o600 });
-      renameSync(temporary, sessionFile);
-    } catch {
-      rmSync(temporary, { force: true });
-      throw Error('SECURE_STORAGE_UNAVAILABLE');
-    }
+    return sessionStore.set(value);
   });
   ipcMain.handle('rankwisp:open-auth', async (event, value) => {
     trusted(event);

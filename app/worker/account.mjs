@@ -100,7 +100,7 @@ export class AccountStore extends DurableObject {
         license: license(a),
         aiConsent: !!a.ai_consent,
         telemetry: !!a.telemetry,
-        authProvider: "google",
+        authProvider: identity.authProvider || "google",
         hasPassword: false,
         storage: {
           bytes: new TextEncoder().encode(a.workspace).byteLength,

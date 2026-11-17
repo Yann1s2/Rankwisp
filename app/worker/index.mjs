@@ -1,5 +1,5 @@
 import {
-  googleRoute,
+  authRoute,
   googleConfigured,
   sessionUser,
   edgeRate,
@@ -10,6 +10,7 @@ import {
 import { hash } from "../server/db-core.mjs";
 import { readLimited } from "./router.mjs";
 import { billingWebhook } from "./billing.mjs";
+import { appleConfigured, revokeAppleGrant } from "./apple-provider.mjs";
 export { AccountStore } from "./account.mjs";
 export { ServiceCoordinator } from "./coordinator.mjs";
 function configured(env) {
@@ -19,6 +20,9 @@ function configured(env) {
   );
 }
 function cors(request, env) {
+  const appleCallback =
+    request.method === "POST" &&
+    new URL(request.url).pathname === "/api/auth/apple/callback";
   const allowed = new Set(
     [env.PUBLIC_ORIGIN, ...(env.ALLOWED_ORIGINS || "").split(",")].filter(
       Boolean,
@@ -28,6 +32,7 @@ function cors(request, env) {
   if (
     origin &&
     !allowed.has(origin) &&
+    !(appleCallback && origin === "https://appleid.apple.com") &&
     !(
       env.PREVIEW_PAGES_PROJECT &&
       /^[a-z0-9-]+$/.test(env.PREVIEW_PAGES_PROJECT) &&
@@ -49,7 +54,7 @@ function cors(request, env) {
   if (env.NODE_ENV === "production")
     headers["Strict-Transport-Security"] =
       "max-age=31536000; includeSubDomains";
-  if (origin) {
+  if (origin && !appleCallback) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
     headers.Vary = "Origin";
@@ -75,7 +80,7 @@ export default {
       if (!(await edgeRate(env, "ip:" + ip, 240)))
         throw fail("RATE_LIMIT", 429);
       if (
-        path.startsWith("/api/auth/google/") &&
+        /^\/api\/auth\/(google|apple)\//.test(path) &&
         !path.endsWith("/exchange") &&
         !(await edgeRate(env, "oauth:" + ip, 20))
       )
@@ -88,11 +93,20 @@ export default {
           request.headers.get("authorization") || "",
         );
         const nativeStart =
-          path === "/api/auth/google/native/start" ||
-          path === "/api/auth/google/native/exchange";
-        if (!request.headers.has("origin") && !bearer && !nativeStart)
+          /^\/api\/auth\/(google|apple)\/native\/(start|exchange)$/.test(path);
+        const appleCallback =
+          path === "/api/auth/apple/callback" && request.method === "POST";
+        if (
+          !request.headers.has("origin") &&
+          !bearer &&
+          !nativeStart &&
+          !appleCallback
+        )
           throw fail("ORIGIN_REQUIRED", 403);
-        const bytes = await readLimited(request, 25165824);
+        const bytes = await readLimited(
+          request,
+          appleCallback ? 16384 : 25165824,
+        );
         request = new Request(request, { body: bytes });
       }
       let response;
@@ -108,6 +122,7 @@ export default {
           localPreview: env.NODE_ENV !== "production",
           registrationOpen: false,
           googleConfigured: googleConfigured(env),
+          appleConfigured: appleConfigured(env),
           authProvider: "google",
           aiConfigured: !!env.OPENAI_API_KEY,
           paymentsConfigured:
@@ -124,7 +139,7 @@ export default {
         if (request.method !== "POST") throw fail("METHOD_NOT_ALLOWED", 405);
         response = await billingWebhook(request, env);
       } else if (path.startsWith("/api/auth/"))
-        response = await googleRoute(request, env);
+        response = await authRoute(request, env);
       if (!response) {
         const user = await sessionUser(request, env);
         if (!user) throw fail("SIGN_IN_REQUIRED", 401);
@@ -133,6 +148,8 @@ export default {
           if (Date.now() - user.authenticated_at > 600000)
             throw fail("REAUTH_REQUIRED", 403);
           if (body.confirm !== "DELETE") throw fail("CONFIRMATION_REQUIRED");
+          if (user.google_sub.startsWith("apple:"))
+            await revokeAppleGrant(env, user.id);
           // Revoke all sessions first: concurrent requests cannot revive the deleted identity.
           await env.IDENTITY.prepare("DELETE FROM sessions WHERE user_id=?")
             .bind(user.id)
@@ -149,6 +166,9 @@ export default {
           response = await env.ACCOUNTS.getByName(user.id).handle(request, {
             id: user.id,
             authenticated_at: user.authenticated_at,
+            authProvider: user.google_sub.startsWith("apple:")
+              ? "apple"
+              : "google",
             ip,
           });
       }
@@ -185,6 +205,12 @@ export default {
           env.IDENTITY.prepare("DELETE FROM native_auth WHERE expires<?").bind(
             now,
           ),
+          env.IDENTITY.prepare(
+            "DELETE FROM apple_oauth_states WHERE expires<?",
+          ).bind(now),
+          env.IDENTITY.prepare(
+            "DELETE FROM apple_native_auth WHERE expires<?",
+          ).bind(now),
           env.IDENTITY.prepare("DELETE FROM edge_limits WHERE updated<?").bind(
             now - 86400000,
           ),

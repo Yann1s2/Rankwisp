@@ -69,8 +69,28 @@ export function errorText(code, locale) {
       "Dein Arbeitsbereich hat sein Speicherlimit von 16 MB erreicht. Exportiere eine Kopie deines Verlaufs und kontaktiere den Support. Deine gespeicherten Daten bleiben erhalten.",
     ],
     ACCOUNT_LINK_REQUIRED: [
-      "An existing account already uses this email. Contact support to link it securely.",
-      "Ein bestehendes Konto verwendet diese E-Mail. Kontaktiere den Support, um es sicher zu verknüpfen.",
+      "An existing account already uses this email. Use your existing sign-in method; accounts are not linked automatically.",
+      "Ein bestehendes Konto verwendet diese E-Mail. Nutze deine bisherige Anmeldemethode; Konten werden nicht automatisch verknüpft.",
+    ],
+    APPLE_NOT_CONFIGURED: [
+      "Apple sign-in is not available yet. Please try again later or contact support.",
+      "Apple-Anmeldung ist noch nicht verfügbar. Versuche es später oder kontaktiere den Support.",
+    ],
+    APPLE_ALREADY_PENDING: [
+      "An Apple sign-in is already open. Complete or cancel it first.",
+      "Eine Apple-Anmeldung ist bereits offen. Schliesse sie ab oder brich sie zuerst ab.",
+    ],
+    APPLE_AUTH_FAILED: [
+      "Apple sign-in could not be completed. Please try again.",
+      "Die Apple-Anmeldung konnte nicht abgeschlossen werden. Versuche es erneut.",
+    ],
+    APPLE_CANCELLED: [
+      "Apple sign-in was cancelled. Your account is unchanged.",
+      "Apple-Anmeldung abgebrochen. Dein Konto ist unverändert.",
+    ],
+    APPLE_EXPIRED: [
+      "This Apple sign-in has expired. Please start again.",
+      "Diese Apple-Anmeldung ist abgelaufen. Bitte beginne erneut.",
     ],
     GOOGLE_NOT_CONFIGURED: [
       "Google sign-in is not available yet. Please try again later or contact support.",

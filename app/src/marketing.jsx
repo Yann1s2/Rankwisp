@@ -20,9 +20,53 @@ import { Brand } from "./components";
 import { LocaleProvider, useLocale } from "./i18n";
 import "./marketing-polish.css";
 const RELEASE =
-  "https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.1-preview.1";
+  "https://github.com/Yann1s2/Rankwisp/releases/tag/v0.2.2-preview.1";
 const ASSETS =
-  "https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.1-preview.1/";
+  "https://github.com/Yann1s2/Rankwisp/releases/download/v0.2.2-preview.1/";
+function GoogleAvailability() {
+  const { tr } = useLocale();
+  const [ready, setReady] = useState(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    fetch((import.meta.env.VITE_API_ORIGIN || "") + "/api/config", {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((config) => {
+        if (
+          !controller.signal.aborted &&
+          typeof config?.googleConfigured === "boolean"
+        ) {
+          setReady(config.googleConfigured);
+        }
+      })
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, []);
+  return (
+    <p className="login-readiness" aria-live="polite">
+      {ready === true
+        ? tr(
+            "Sign in with Google. No additional password needed.",
+            "Mit Google anmelden. Kein zusätzliches Passwort nötig.",
+          )
+        : ready === false
+          ? tr(
+              "Google sign-in is not available on this server yet. The demo needs no account.",
+              "Google-Anmeldung ist auf diesem Server noch nicht verfügbar. Die Demo benötigt kein Konto.",
+            )
+          : tr(
+              "You can explore the demo without an account.",
+              "Die Demo ist ohne Konto zugänglich.",
+            )}
+    </p>
+  );
+}
 function DownloadChoices() {
   const { tr } = useLocale();
   const [platform, setPlatform] = useState(null);
@@ -66,7 +110,7 @@ function DownloadChoices() {
       </p>
       <div className="download-buttons">
         <a
-          href={ASSETS + "Rankwisp-0.2.1-mac-arm64.zip"}
+          href={ASSETS + "Rankwisp-0.2.2-mac-arm64.zip"}
           className={
             "download-button " + (platform === "mac" ? "recommended" : "")
           }
@@ -79,7 +123,7 @@ function DownloadChoices() {
           <Download size={16} aria-hidden="true" />
         </a>
         <a
-          href={ASSETS + "Rankwisp-0.2.1-win.zip"}
+          href={ASSETS + "Rankwisp-0.2.2-win.zip"}
           className={
             "download-button " + (platform === "windows" ? "recommended" : "")
           }
@@ -96,8 +140,8 @@ function DownloadChoices() {
       </div>
       <p className="download-preview-note">
         {tr(
-          "v0.2.1-preview.1 · Unsigned development previews. Mac notarisation and Windows runtime validation are pending.",
-          "v0.2.1-preview.1 · Unsignierte Entwicklungsvorschauen. Mac-Notarisierung und Windows-Laufzeitprüfung stehen aus.",
+          "v0.2.2-preview.1 · Unsigned development previews. Mac notarisation and Windows runtime validation are pending.",
+          "v0.2.2-preview.1 · Unsignierte Entwicklungsvorschauen. Mac-Notarisierung und Windows-Laufzeitprüfung stehen aus.",
         )}{" "}
         <a href={RELEASE}>
           {tr("Release notes & checksums", "Versionshinweise & Prüfsummen")}{" "}
@@ -278,12 +322,7 @@ function MarketingBody({ page }) {
                       {tr("Sign in", "Anmelden")} <ArrowRight size={15} />
                     </a>
                   </div>
-                  <p className="login-readiness">
-                    {tr(
-                      "Google sign-in is awaiting configuration. You can explore the demo without an account.",
-                      "Die Einrichtung der Google-Anmeldung steht noch aus. Die Demo ist ohne Konto zugänglich.",
-                    )}
-                  </p>
+                  <GoogleAvailability />
                 </div>
                 <div className="brand-presence" aria-hidden="true">
                   <div className="brand-presence-lines">
@@ -810,8 +849,8 @@ function InfoPage({ page }) {
               </h2>
               <p>
                 {tr(
-                  "No installation or account needed for the demo. Hosted Google sign-in is not configured yet.",
-                  "Die Demo benötigt weder Installation noch Konto. Die gehostete Google-Anmeldung ist noch nicht eingerichtet.",
+                  "No installation or account needed for the demo. Sign in to create your own workspace.",
+                  "Die Demo benötigt weder Installation noch Konto. Melde dich für deinen eigenen Arbeitsbereich an.",
                 )}
               </p>
             </div>
@@ -845,7 +884,7 @@ function InfoPage({ page }) {
                 {tr("Source code & setup", "Quellcode & Einrichtung")}{" "}
                 <ArrowUpRight size={14} />
               </a>
-              <a href={ASSETS + "SHA256SUMS-0.2.1.txt"}>
+              <a href={ASSETS + "SHA256SUMS-0.2.2.txt"}>
                 {tr("Checksums", "Prüfsummen")} <ArrowUpRight size={14} />
               </a>
             </div>
@@ -862,15 +901,15 @@ function InfoPage({ page }) {
           <h2>{tr("What is stored", "Was gespeichert wird")}</h2>
           <p>
             {tr(
-              "When Google sign-in is configured: your Google account identifier and verified email, hashed session records, trial dates, licence and usage counters, selected apps, keywords, observations and import backups. Google access and ID tokens are not retained. Password hashes apply only to the separate local Node version. Local language preference is saved on your device. Session cookies are necessary for sign-in; no advertising cookies are used.",
-              "Wenn Google-Anmeldung eingerichtet ist: Google-Kontokennung und bestätigte E-Mail, gehashte Sitzungsdaten, Testbeginn, Lizenz und Nutzungskontingente, gewählte Apps, Keywords, Messungen und Importsicherungen. Google-Zugriffs- und ID-Tokens werden nicht aufbewahrt. Passwort-Hashes betreffen nur die separate lokale Node-Version. Die Sprachwahl wird lokal gespeichert. Sitzungscookies sind zur Anmeldung erforderlich; Werbecookies werden nicht eingesetzt.",
+              "When you sign in with an enabled provider: your Google or Apple account identifier and verified email (including an Apple relay address when chosen), hashed session records, trial dates, licence and usage counters, selected apps, keywords, observations and import backups. Google access and ID tokens are not retained. For Apple sign-in, a refresh grant is stored encrypted so access can be revoked when you delete your account. Password hashes apply only to the separate local Node version. Local language preference is saved on your device. Session cookies are necessary for sign-in; no advertising cookies are used.",
+              "Bei Anmeldung mit einem aktivierten Anbieter: Google- oder Apple-Kontokennung und bestätigte E-Mail (gegebenenfalls eine gewählte Apple-Relay-Adresse), gehashte Sitzungsdaten, Testbeginn, Lizenz und Nutzungskontingente, gewählte Apps, Keywords, Messungen und Importsicherungen. Google-Zugriffs- und ID-Tokens werden nicht aufbewahrt. Bei Apple-Anmeldung wird ein Refresh-Token verschlüsselt gespeichert, um den Zugang bei Kontolöschung zu widerrufen. Passwort-Hashes betreffen nur die separate lokale Node-Version. Die Sprachwahl wird lokal gespeichert. Sitzungscookies sind zur Anmeldung erforderlich; Werbecookies werden nicht eingesetzt.",
             )}
           </p>
           <h2>{tr("Where requests go", "Wohin Anfragen gehen")}</h2>
           <p>
             {tr(
-              "Cloudflare serves this website and API and stores account data using D1 and SQLite Durable Objects; network requests disclose your IP address to Cloudflare. Google handles sign-in when enabled. Apple receives search terms, app IDs and storefront country. App icons load from Apple’s CDN and may expose your IP address to Apple. With your separate permission, OpenAI receives bounded project observations for requested advice. Provider API keys remain on the server. Payment processing will use a configured provider only after launch approval.",
-              "Cloudflare stellt Website und API bereit und speichert Kontodaten in D1 und SQLite Durable Objects; dabei erhält Cloudflare deine IP-Adresse. Google übernimmt die Anmeldung, sobald sie aktiviert ist. Apple erhält Suchbegriffe, App-IDs und das Store-Land. App-Icons werden von Apples CDN geladen, wodurch Apple deine IP-Adresse erhält. Mit deiner gesonderten Einwilligung erhält OpenAI begrenzte Projektmessungen für angeforderte Empfehlungen. API-Schlüssel bleiben auf dem Server. Zahlungsabwicklung erfolgt erst nach Freigabe über einen eingerichteten Anbieter.",
+              "Cloudflare serves this website and API and stores account data using D1 and SQLite Durable Objects; network requests disclose your IP address to Cloudflare. Google or Apple handles sign-in when that provider is enabled and selected. Apple receives search terms, app IDs and storefront country. App icons load from Apple’s CDN and may expose your IP address to Apple. With your separate permission, OpenAI receives bounded project observations for requested advice. Provider API keys remain on the server. Payment processing will use a configured provider only after launch approval.",
+              "Cloudflare stellt Website und API bereit und speichert Kontodaten in D1 und SQLite Durable Objects; dabei erhält Cloudflare deine IP-Adresse. Google oder Apple übernimmt die Anmeldung, wenn der jeweilige Anbieter aktiviert und ausgewählt ist. Apple erhält Suchbegriffe, App-IDs und das Store-Land. App-Icons werden von Apples CDN geladen, wodurch Apple deine IP-Adresse erhält. Mit deiner gesonderten Einwilligung erhält OpenAI begrenzte Projektmessungen für angeforderte Empfehlungen. API-Schlüssel bleiben auf dem Server. Zahlungsabwicklung erfolgt erst nach Freigabe über einen eingerichteten Anbieter.",
             )}
           </p>
           <h2>{tr("Analytics is optional", "Analytics ist optional")}</h2>

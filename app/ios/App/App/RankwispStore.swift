@@ -145,7 +145,7 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
         let items = parts.queryItems ?? []
         let api = configuredAPI
         let ticket = api != nil && url.scheme == api?.scheme && url.host == api?.host && url.port == api?.port
-            && url.path == "/api/auth/google/start" && items.count == 1 && items[0].name == "ticket"
+            && ["/api/auth/google/start", "/api/auth/apple/start"].contains(url.path) && items.count == 1 && items[0].name == "ticket"
             && items[0].value?.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil
         guard google || ticket else { call.reject("INVALID_AUTH_URL"); return }
         // Open the backend ticket first so its HttpOnly browser binding is set before Google redirects.
