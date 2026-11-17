@@ -1,13 +1,18 @@
 :root {
-  --canvas: #f6f7f3;
-  --paper: #fff;
-  --pine: #2c4636;
-  --lime: #e4edc4;
-  --ink: #344333;
-  --muted: #89927f;
-  --line: #e4e8de;
-  --radius: 12px;
-  --motion-fast: 160ms;
-  --motion-enter: 240ms;
+  /* Rankwisp: paper + ink, confident navy, oxblood actions, warm peach delight. */
+  --charcoal: #1e1e24;
+  --oxblood: #92140c;
+  --cream: #fff8f0;
+  --peach: #ffcf99;
+  --navy: #111d4a;
+  --canvas: var(--cream);
+  --paper: #fffdf9;
+  --ink: var(--charcoal);
+  --muted: #64616b;
+  --line: #ded8d1;
+  --radius: 18px;
+  --motion-fast: 140ms;
+  --motion-enter: 220ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   color-scheme: light;
 }

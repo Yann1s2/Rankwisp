@@ -1,0 +1,141 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "rankwisp-api",
+  "main": "index.mjs",
+  "compatibility_date": "2026-11-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false,
+    },
+  },
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.sql"],
+      "fallthrough": true,
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "IDENTITY",
+      "database_name": "rankwisp-identity",
+      "database_id": "cc2d960b-d7b3-4c9c-be3e-a61e2d78d93d",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ACCOUNTS",
+        "class_name": "AccountStore",
+      },
+      {
+        "name": "COORDINATOR",
+        "class_name": "ServiceCoordinator",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["AccountStore", "ServiceCoordinator"],
+    },
+  ],
+  "triggers": {
+    "crons": ["17 * * * *"],
+  },
+  "vars": {
+    "NODE_ENV": "production",
+    "PUBLIC_ORIGIN": "https://rankwisp.pages.dev",
+    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_REDIRECT_URI": "https://rankwisp.pages.dev/api/auth/google/callback",
+    "ALLOWED_ORIGINS": "https://rankwisp.pages.dev,capacitor://localhost,rankwisp://app",
+    "OPENAI_MODEL": "gpt-6-luna",
+    "OPENAI_DECISION_MODEL": "gpt-6.1-sol",
+    "AI_GLOBAL_BUDGET_USD": "20",
+    "LEGAL_APPROVED": "false",
+  },
+  "account_id": "afbaca3c7bb70def91d852aeb87ae6e0",
+  "env": {
+    "preview": {
+      "name": "rankwisp-api-preview",
+      "vars": {
+        "NODE_ENV": "production",
+        "PUBLIC_ORIGIN": "https://development.rankwisp.pages.dev",
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_REDIRECT_URI": "https://development.rankwisp.pages.dev/api/auth/google/callback",
+        "ALLOWED_ORIGINS": "https://development.rankwisp.pages.dev,capacitor://localhost,rankwisp://app",
+        "OPENAI_MODEL": "gpt-6-luna",
+        "OPENAI_DECISION_MODEL": "gpt-6.1-sol",
+        "AI_GLOBAL_BUDGET_USD": "20",
+        "LEGAL_APPROVED": "false",
+        "PREVIEW_PAGES_PROJECT": "rankwisp",
+      },
+      "d1_databases": [
+        {
+          "binding": "IDENTITY",
+          "database_name": "rankwisp-identity-preview",
+          "database_id": "ffdd2724-7e7e-48b4-bff3-f26114b82678",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "ACCOUNTS",
+            "class_name": "AccountStore",
+          },
+          {
+            "name": "COORDINATOR",
+            "class_name": "ServiceCoordinator",
+          },
+        ],
+      },
+      "triggers": {
+        "crons": ["27 * * * *"],
+      },
+    },
+    "local": {
+      "name": "rankwisp-api-local",
+      "vars": {
+        "NODE_ENV": "development",
+        "PUBLIC_ORIGIN": "http://127.0.0.1:8787",
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_REDIRECT_URI": "http://127.0.0.1:8787/api/auth/google/callback",
+        "ALLOWED_ORIGINS": "http://127.0.0.1:8787,http://127.0.0.1:4317,http://127.0.0.1:4318,capacitor://localhost,rankwisp://app",
+        "OPENAI_MODEL": "gpt-6-luna",
+        "OPENAI_DECISION_MODEL": "gpt-6.1-sol",
+        "AI_GLOBAL_BUDGET_USD": "20",
+        "LEGAL_APPROVED": "false",
+      },
+      "d1_databases": [
+        {
+          "binding": "IDENTITY",
+          "database_name": "rankwisp-identity-local",
+          "database_id": "00000000-0000-0000-0000-000000000001",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "ACCOUNTS",
+            "class_name": "AccountStore",
+          },
+          {
+            "name": "COORDINATOR",
+            "class_name": "ServiceCoordinator",
+          },
+        ],
+      },
+      "triggers": {
+        "crons": [],
+      },
+    },
+  },
+}

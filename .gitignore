@@ -13,3 +13,13 @@ legacy/.build/
 releases/
 .DS_Store
 **/xcuserdata/
+app/.wrangler/
+app/.dev.vars
+app/.dev.vars.*
+app/worker/.dev.vars
+app/worker/.dev.vars.*
+app/worker/.wrangler/
+app/coverage/
+app/.playwright-cli/
+app/output/
+app/.test-data/

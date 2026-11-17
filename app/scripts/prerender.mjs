@@ -11,6 +11,9 @@ const { Marketing } = await server.ssrLoadModule("/src/marketing.jsx");
 const template = readFileSync("dist/index.html", "utf8");
 const base = process.env.SITE_URL?.replace(/\/$/, "");
 const valid = base && /^https:\/\/[^/]+$/.test(base);
+const apiOrigin = process.env.VITE_API_ORIGIN || "";
+if (apiOrigin && !/^https:\/\/[^/]+$/.test(apiOrigin) && !/^http:\/\/127\.0\.0\.1:\d+$/.test(apiOrigin)) throw new Error("VITE_API_ORIGIN must be an HTTPS origin (or explicit local development origin)");
+writeFileSync("dist/native-config.json", JSON.stringify({ apiOrigin, development: process.env.NATIVE_LOCAL_DEVELOPMENT === "true" && /^http:\/\/127\.0\.0\.1:/.test(apiOrigin) }));
 const routes = [];
 for (const locale of ["en", "de"])
   for (const page of [

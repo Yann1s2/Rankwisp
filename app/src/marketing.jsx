@@ -87,6 +87,13 @@ function MarketingBody({ page }) {
         {page === "home" ? (
           <>
             <section className="hero">
+              <img
+                className="hero-mascot"
+                src="/wisp.svg"
+                width="240"
+                height="215"
+                alt=""
+              />
               <div className="hero-eyebrow">
                 <span />
                 <span>
@@ -427,6 +434,13 @@ function MarketingBody({ page }) {
                   )}
                 </p>
                 <ul>
+                  <li>
+                    <Check size={15} />
+                    {tr(
+                      "16 MB of workspace history",
+                      "16 MB für deinen Verlauf",
+                    )}
+                  </li>
                   {[
                     tr(
                       "24-day free trial · 120 cloud checks",

@@ -3,10 +3,6 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import Stripe from "stripe";
-import {
-  SignedDataVerifier,
-  Environment,
-} from "@apple/app-store-server-library";
 import { z } from "zod";
 import {
   hash,
@@ -19,7 +15,7 @@ import {
   saveWorkspace,
   applyPayment,
   applyAppleTrial,
-} from "./db.mjs";
+} from "./db-core.mjs";
 import {
   COUNTRIES,
   parseImport,
@@ -39,9 +35,13 @@ export function createApp(
     apple = appleClient(db),
     ai = advise,
     stripeClient,
+    appFactory = express,
+    authenticate,
+    externalAuth = false,
+    rootCertificates,
   } = {},
 ) {
-  const app = express();
+  const app = appFactory();
   app.disable("x-powered-by");
   const prod = env.NODE_ENV === "production";
   const origin = env.PUBLIC_ORIGIN || "http://127.0.0.1:4318";
@@ -56,13 +56,16 @@ export function createApp(
   if (
     prod &&
     (!origin.startsWith("https://") ||
-      !env.INVITE_CODE ||
-      env.INVITE_CODE.length < 24)
+      (!externalAuth && (!env.INVITE_CODE || env.INVITE_CODE.length < 24)))
   )
     throw Error("PRODUCTION_REQUIRES_HTTPS_AND_INVITE");
   const stripe =
     stripeClient ??
-    (env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null);
+    (env.STRIPE_SECRET_KEY
+      ? new Stripe(env.STRIPE_SECRET_KEY, {
+          httpClient: Stripe.createFetchHttpClient(),
+        })
+      : null);
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
@@ -74,7 +77,19 @@ export function createApp(
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.mzstatic.com; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
     );
     const o = req.headers.origin;
-    if (o && !allowed.has(o))
+    if (
+      o &&
+      !allowed.has(o) &&
+      !(
+        env.PREVIEW_PAGES_PROJECT &&
+        /^[a-z0-9-]+$/.test(env.PREVIEW_PAGES_PROJECT) &&
+        new RegExp(
+          "^https://[a-z0-9-]+\\." +
+            env.PREVIEW_PAGES_PROJECT +
+            "\\.pages\\.dev$",
+        ).test(o)
+      )
+    )
       return res.status(403).json({ error: "ORIGIN_REJECTED" });
     if (o) {
       res.setHeader("Access-Control-Allow-Origin", o);
@@ -96,7 +111,7 @@ export function createApp(
   });
   app.post(
     "/api/webhooks/stripe",
-    express.raw({ type: "application/json", limit: "1mb" }),
+    appFactory.raw({ type: "application/json", limit: "1mb" }),
     async (req, res) => {
       if (!stripe || !env.STRIPE_WEBHOOK_SECRET)
         return res.status(503).json({ error: "PAYMENTS_NOT_CONFIGURED" });
@@ -138,7 +153,11 @@ export function createApp(
           }
         }
         if (
-          ["charge.refunded", "charge.dispute.created"].includes(event.type)
+          ["charge.dispute.created", "charge.dispute.closed"].includes(
+            event.type,
+          ) ||
+          (event.type === "charge.refunded" &&
+            event.data.object.refunded === true)
         ) {
           const object = event.data.object;
           const paymentID = object.payment_intent;
@@ -150,7 +169,16 @@ export function createApp(
               eventID: event.id,
               paymentID,
               account: old.account,
-              status: "revoked",
+              status:
+                event.type === "charge.dispute.created"
+                  ? "disputed"
+                  : event.type === "charge.dispute.closed" &&
+                      object.status === "won"
+                    ? "paid"
+                    : "revoked",
+              disputeResolved:
+                event.type === "charge.dispute.closed" &&
+                object.status === "won",
               provider: "stripe",
             });
           else if (paymentID) {
@@ -164,7 +192,16 @@ export function createApp(
                 eventID: event.id,
                 paymentID,
                 account: owner,
-                status: "revoked",
+                status:
+                  event.type === "charge.dispute.created"
+                    ? "disputed"
+                    : event.type === "charge.dispute.closed" &&
+                        object.status === "won"
+                      ? "paid"
+                      : "revoked",
+                disputeResolved:
+                  event.type === "charge.dispute.closed" &&
+                  object.status === "won",
                 provider: "stripe",
               });
           }
@@ -175,7 +212,7 @@ export function createApp(
       }
     },
   );
-  app.use(express.json({ limit: "12mb" }));
+  app.use(appFactory.json({ limit: "24mb" }));
   app.get("/api/health", (_q, res) =>
     res.json({
       ok: true,
@@ -192,7 +229,7 @@ export function createApp(
         !!stripe && !!env.STRIPE_PRICE_ID && env.LEGAL_APPROVED === "true",
       applePaymentsConfigured:
         env.LEGAL_APPROVED === "true" &&
-        !!env.APPLE_ROOT_CERTS_DIR &&
+        !!(env.APPLE_ROOT_CERTS_DIR || rootCertificates?.length) &&
         !!env.APPLE_APP_ID,
       support: "info@zhstudio.ch",
     }),
@@ -218,6 +255,7 @@ export function createApp(
     return req.headers["x-rankwisp-client"] === "native" ? { token } : {};
   }
   app.post("/api/auth/register", (req, res) => {
+    if (externalAuth) throw fail("GOOGLE_SIGN_IN_REQUIRED", 403);
     if (
       !rate(db, "register:" + hash(req.socket.remoteAddress ?? ""), 5, 3600000)
     )
@@ -241,6 +279,7 @@ export function createApp(
     });
   });
   app.post("/api/auth/login", (req, res) => {
+    if (externalAuth) throw fail("GOOGLE_SIGN_IN_REQUIRED", 403);
     if (!rate(db, "login:" + hash(req.socket.remoteAddress ?? ""), 10, 900000))
       throw fail("RATE_LIMIT", 429);
     const v = authInput.parse(req.body);
@@ -259,12 +298,16 @@ export function createApp(
   });
   app.post("/api/webhooks/apple", async (req, res) => {
     try {
-      const notification = await appleVerifier().verifyAndDecodeNotification(
+      const notification = await (
+        await appleVerifier()
+      ).verifyAndDecodeNotification(
         z.string().max(50000).parse(req.body.signedPayload),
       );
       const signed = notification.data?.signedTransactionInfo;
       if (signed) {
-        const tx = await appleVerifier().verifyAndDecodeTransaction(signed);
+        const tx = await (
+          await appleVerifier()
+        ).verifyAndDecodeTransaction(signed);
         if (
           tx.productId ===
             (env.APPLE_PRODUCT_ID || "ch.zhstudio.rankwisp.lifetime") &&
@@ -290,6 +333,7 @@ export function createApp(
     }
   });
   app.use("/api", (req, _res, next) => {
+    if (authenticate) return authenticate(req, _res, next);
     const token =
       req.headers.authorization?.replace(/^Bearer /, "") ??
       req.headers.cookie
@@ -338,6 +382,7 @@ export function createApp(
     res.json({ ok: true });
   });
   app.post("/api/auth/password", (req, res) => {
+    if (externalAuth) throw fail("GOOGLE_ACCOUNT_MANAGED", 403);
     const v = z
       .object({
         current: z.string().max(200),
@@ -671,7 +716,13 @@ export function createApp(
         const data = JSON.parse(a.workspace);
         const p = data.projects.find((p) => String(p.id) === projectID);
         const k = p?.keywords.find((k) => k.id === keyword.id);
-        if (!k) continue;
+        if (
+          !k ||
+          p.appleID !== project.appleID ||
+          p.country !== project.country ||
+          k.text !== keyword.text
+        )
+          continue;
         k.lastAttempt = new Date().toISOString();
         if (error) {
           k.lastError = error;
@@ -704,7 +755,7 @@ export function createApp(
   }
   app.post("/api/projects/:id/refresh", async (req, res) => {
     writable(req);
-    if (!rate(db, "refresh:" + req.account.id, 4))
+    if (!req.internalScheduled && !rate(db, "refresh:" + req.account.id, 4))
       throw fail("RATE_LIMIT", 429);
     res.json(await refresh(req.account.id, req.params.id, req.body.keywordID));
   });
@@ -721,6 +772,14 @@ export function createApp(
       );
       const data = ws(req);
       const current = getProject(data, req.params.id);
+      if (current.appleID !== p.appleID || current.country !== p.country)
+        throw fail("IMPORT_CONFLICT", 409);
+      if (!result.results.some((a) => a.id === p.appleID))
+        throw fail("APPLE_APP_NOT_FOUND", 503);
+      current.competitors = (current.competitors || []).map((a) => ({
+        ...a,
+        ...(result.results.find((next) => next.id === a.id) || {}),
+      }));
       current.lastMetadataAttempt = result.fetchedAt;
       delete current.lastMetadataError;
       current.metadata =
@@ -731,9 +790,12 @@ export function createApp(
       ];
       saveWorkspace(db, req.account.id, data);
       res.json({ ok: true });
-    } catch {
+    } catch (error) {
+      if (error.status === 409 || error.status === 413) throw error;
       const data = ws(req);
       const current = getProject(data, req.params.id);
+      if (current.appleID !== p.appleID || current.country !== p.country)
+        throw fail("IMPORT_CONFLICT", 409);
       current.lastMetadataAttempt = new Date().toISOString();
       current.lastMetadataError = "APPLE_UNAVAILABLE";
       saveWorkspace(db, req.account.id, data);
@@ -778,13 +840,22 @@ export function createApp(
     res.json({ url: session.url });
   });
   let verifier;
-  function appleVerifier() {
+  async function appleVerifier() {
+    // Apple SDK initializes crypto randomness; load only inside a request, never Worker global scope.
+    const { SignedDataVerifier, Environment } = await import(
+      "@apple/app-store-server-library"
+    );
     if (verifier) return verifier;
-    if (!env.APPLE_ROOT_CERTS_DIR || !env.APPLE_BUNDLE_ID)
+    if (
+      (!env.APPLE_ROOT_CERTS_DIR && !rootCertificates?.length) ||
+      !env.APPLE_BUNDLE_ID
+    )
       throw fail("PAYMENTS_NOT_CONFIGURED", 503);
-    const roots = readdirSync(env.APPLE_ROOT_CERTS_DIR)
-      .filter((n) => n.endsWith(".cer"))
-      .map((n) => readFileSync(resolve(env.APPLE_ROOT_CERTS_DIR, n)));
+    const roots =
+      rootCertificates ||
+      readdirSync(env.APPLE_ROOT_CERTS_DIR)
+        .filter((n) => n.endsWith(".cer"))
+        .map((n) => readFileSync(resolve(env.APPLE_ROOT_CERTS_DIR, n)));
     if (!roots.length) throw fail("PAYMENTS_NOT_CONFIGURED", 503);
     verifier = new SignedDataVerifier(
       roots,
@@ -799,7 +870,7 @@ export function createApp(
   }
   app.post("/api/billing/apple", async (req, res) => {
     const signed = z.string().max(20000).parse(req.body.signedTransaction);
-    const tx = await appleVerifier().verifyAndDecodeTransaction(signed);
+    const tx = await (await appleVerifier()).verifyAndDecodeTransaction(signed);
     if (
       tx.productId ===
       (env.APPLE_TRIAL_PRODUCT_ID || "ch.zhstudio.rankwisp.trial24")
@@ -848,15 +919,13 @@ export function createApp(
   app.use((e, _req, res, _next) => {
     const validation = e instanceof z.ZodError;
     const known = /^[A-Z_]+$/.test(e.message);
-    res
-      .status(validation ? 400 : e.status || 502)
-      .json({
-        error: validation
-          ? "INVALID_INPUT"
-          : known
-            ? e.message
-            : "SERVICE_UNAVAILABLE",
-      });
+    res.status(validation ? 400 : e.status || 502).json({
+      error: validation
+        ? "INVALID_INPUT"
+        : known
+          ? e.message
+          : "SERVICE_UNAVAILABLE",
+    });
   });
   let scheduling = false;
   app.locals.tick = async () => {

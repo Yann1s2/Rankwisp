@@ -14,7 +14,7 @@ export default defineConfig({
     env: {
       PORT: "4320",
       PUBLIC_ORIGIN: "http://127.0.0.1:4320",
-      DB_PATH: "../../../work/browser-test-" + Date.now() + ".sqlite",
+      DB_PATH: ".test-data/browser-test-" + Date.now() + ".sqlite",
       NODE_ENV: "development",
     },
   },

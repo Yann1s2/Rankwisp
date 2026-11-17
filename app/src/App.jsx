@@ -31,7 +31,15 @@ import {
   ExternalLink,
   Download,
 } from "lucide-react";
-import { api, exportFile, clearToken, ios, Store, native } from "./api";
+import {
+  api,
+  exportFile,
+  clearToken,
+  ios,
+  Store,
+  native,
+  beginGoogleSignIn,
+} from "./api";
 import { useLocale, errorText } from "./i18n";
 import {
   Brand,
@@ -76,6 +84,7 @@ export default function App() {
     [importPreview, setImportPreview] = useState(null),
     [importRaw, setImportRaw] = useState(null);
   const inputFile = useRef();
+  const reconciling = useRef(new Set());
   const project =
     workspace?.projects.find((p) => String(p.id) === String(projectID)) ||
     workspace?.projects[0];
@@ -91,6 +100,65 @@ export default function App() {
     setWorkspace(w.workspace);
     setRevision(w.revision);
   }
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const editing = /^(INPUT|TEXTAREA|SELECT)$/.test(
+        document.activeElement?.tagName || "",
+      );
+      const keyboard = editing && viewport.height < innerHeight * 0.78;
+      document.documentElement.style.setProperty(
+        "--app-height",
+        keyboard ? `${viewport.height}px` : "100dvh",
+      );
+      document.body.classList.toggle("keyboard-open", keyboard);
+      if (keyboard)
+        document.activeElement?.scrollIntoView({ block: "nearest" });
+    };
+    viewport.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
+      document.body.classList.remove("keyboard-open");
+    };
+  }, []);
+  useEffect(() => {
+    if (!sidebar) return;
+    const old = document.activeElement;
+    const menu = document.querySelector(".sidebar");
+    const items = () =>
+      [...menu.querySelectorAll("button:not(:disabled),a[href],select")].filter(
+        (el) => el.getClientRects().length,
+      );
+    items()[0]?.focus();
+    const key = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSidebar(false);
+      }
+      if (e.key === "Tab") {
+        const list = items(),
+          first = list[0],
+          last = list.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("keydown", key);
+      old?.focus();
+    };
+  }, [sidebar]);
   useEffect(() => {
     if (demo) {
       setWorkspace(demoWorkspace());
@@ -113,6 +181,51 @@ export default function App() {
       .finally(() => setBoot(false));
   }, []);
   useEffect(() => {
+    const handler = (e) => notify(errorText(e.detail, locale), "error");
+    window.addEventListener("rankwisp:session-error", handler);
+    return () => window.removeEventListener("rankwisp:session-error", handler);
+  }, [locale]);
+  useEffect(() => {
+    if (!ios || !me?.account?.id || demo) return;
+    let active = true,
+      listener;
+    async function reconcile(tx) {
+      if (!tx?.transactionID || reconciling.current.has(tx.transactionID))
+        return;
+      reconciling.current.add(tx.transactionID);
+      try {
+        await api("/billing/apple", {
+          signedTransaction: tx.signedTransaction,
+        });
+        await Store.finish({ transactionID: tx.transactionID });
+        if (active) await load();
+      } catch (e) {
+        if (active) notify(errorText(e.message, locale), "error");
+      } finally {
+        reconciling.current.delete(tx.transactionID);
+      }
+    }
+    Store.addListener("transactionUpdated", reconcile)
+      .then((handle) => {
+        if (active) listener = handle;
+        else handle.remove().catch(() => {});
+      })
+      .catch((e) => {
+        if (active) notify(errorText(e.message, locale), "error");
+      });
+    Store.unfinished()
+      .then((result) => {
+        if (active) return Promise.all(result.transactions.map(reconcile));
+      })
+      .catch((e) => {
+        if (active) notify(errorText(e.message, locale), "error");
+      });
+    return () => {
+      active = false;
+      listener?.remove().catch(() => {});
+    };
+  }, [me?.account?.id]);
+  useEffect(() => {
     setAdvice(null);
     setSelectedKeyword(null);
   }, [projectID]);
@@ -126,7 +239,9 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setPage("keywords");
-        document.querySelector("[data-keyword-search]")?.focus();
+        requestAnimationFrame(() =>
+          document.querySelector("[data-keyword-search]")?.focus(),
+        );
       }
     };
     window.addEventListener("keydown", listener);
@@ -163,6 +278,7 @@ export default function App() {
   const navigate = (value) => {
     setPage(value);
     setSidebar(false);
+    if (ios) Store.haptic().catch(() => {});
   };
   async function refresh(k) {
     await action("refresh", async () => {
@@ -193,12 +309,12 @@ export default function App() {
   async function readImport(file) {
     if (!file) return;
     await action("import", async () => {
-      if (file.size > 12 * 1024 * 1024) throw Error("INVALID_INPUT");
+      if (file.size > 48 * 1024 * 1024) throw Error("IMPORT_FILE_TOO_LARGE");
       let raw;
       try {
         raw = JSON.parse(await file.text());
       } catch {
-        throw Error("INVALID_INPUT");
+        throw Error("IMPORT_INVALID_JSON");
       }
       const result = await api("/import/preview", raw);
       setImportRaw(raw);
@@ -216,7 +332,24 @@ export default function App() {
         </span>
       </div>
     );
-  if (!me) return <Auth config={config} onReady={load} notice={notice} />;
+  if (!me)
+    return (
+      <Auth
+        config={config}
+        onReady={load}
+        notice={notice}
+        onRetry={async () => {
+          const next = await api("/config");
+          setConfig(next);
+          setNotice(null);
+          try {
+            await load();
+          } catch (e) {
+            if (e.status !== 401) throw e;
+          }
+        }}
+      />
+    );
   const nav = [
     ["overview", LayoutDashboard, tr("Overview", "Übersicht")],
     ["keywords", Search, "Keywords"],
@@ -249,7 +382,7 @@ export default function App() {
   const title =
     nav.find((x) => x[0] === page)?.[2] || tr("Settings", "Einstellungen");
   return (
-    <div className="app-shell">
+    <div className={"app-shell page-" + page}>
       <a className="skip" href="#main">
         {tr("Skip to content", "Zum Inhalt")}
       </a>
@@ -356,10 +489,14 @@ export default function App() {
                   window.location.href = "/app";
                   return;
                 }
-                await api("/auth/logout", {});
-                clearToken();
-                setMe(null);
-                setWorkspace(null);
+                try {
+                  await api("/auth/logout", {});
+                  clearToken();
+                  setMe(null);
+                  setWorkspace(null);
+                } catch (e) {
+                  notify(errorText(e.message, locale), "error");
+                }
               }}
             >
               <LogOut size={15} />
@@ -374,7 +511,7 @@ export default function App() {
           onClick={() => setSidebar(false)}
         />
       )}
-      <div className="app-content">
+      <div className="app-content" inert={sidebar || undefined}>
         <header className="app-header">
           <div>
             <button
@@ -391,10 +528,7 @@ export default function App() {
           <div className="header-actions">
             <span className="preview-pill">
               {demo
-                ? tr(
-                    "Illustration · fictional data",
-                    "Illustration · fiktive Daten",
-                  )
+                ? tr("Demo · fictional data", "Demo · fiktive Daten")
                 : tr("Private preview", "Private Vorschau")}
             </span>
             <button
@@ -418,7 +552,7 @@ export default function App() {
             </a>
           </div>
         )}
-        <main id="main" className="workspace-main">
+        <main id="main" className="workspace-main" key={page}>
           {me.license.state === "pending" && (
             <div className="notice">
               {tr(
@@ -446,30 +580,32 @@ export default function App() {
             </div>
           )}
           {!project ? (
-            <Empty
-              title={tr(
-                "Meet your next chapter.",
-                "Dein nächstes Kapitel wartet.",
-              )}
-            >
-              {tr(
-                "Find your app, choose meaningful comparisons, and make your next move with confidence.",
-                "Finde deine App, wähle passende Vergleiche und entscheide deinen nächsten Schritt.",
-              )}
-              <div className="empty-actions">
-                <Button onClick={() => setModal("onboarding")}>
-                  {tr("Find my app", "Meine App finden")}{" "}
-                  <ArrowRight size={16} />
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => inputFile.current.click()}
-                >
-                  <FileUp size={16} />
-                  {tr("Import Rankblick data", "Rankblick-Daten importieren")}
-                </Button>
-              </div>
-            </Empty>
+            page === "settings" ? null : (
+              <Empty
+                title={tr(
+                  "Meet your next chapter.",
+                  "Dein nächstes Kapitel wartet.",
+                )}
+              >
+                {tr(
+                  "Find your app, choose meaningful comparisons, and make your next move with confidence.",
+                  "Finde deine App, wähle passende Vergleiche und entscheide deinen nächsten Schritt.",
+                )}
+                <div className="empty-actions">
+                  <Button onClick={() => setModal("onboarding")}>
+                    {tr("Find my app", "Meine App finden")}{" "}
+                    <ArrowRight size={16} />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => inputFile.current.click()}
+                  >
+                    <FileUp size={16} />
+                    {tr("Import Rankblick data", "Rankblick-Daten importieren")}
+                  </Button>
+                </div>
+              </Empty>
+            )
           ) : (
             <>
               <div className="page-heading">
@@ -482,17 +618,14 @@ export default function App() {
                   </div>
                   <h1>
                     {page === "overview"
-                      ? tr(
-                          "A clearer view of your growth.",
-                          "Ein klarer Blick auf deine Entwicklung.",
-                        )
+                      ? tr("Your app, at a glance.", "Deine App im Überblick.")
                       : title}
                   </h1>
                   <p>
                     {page === "overview"
                       ? tr(
-                          "Small signals. Meaningful progress. Your next move starts here.",
-                          "Kleine Signale. Sichtbare Fortschritte. Hier beginnt dein nächster Schritt.",
+                          "Real observations. A little perspective.",
+                          "Echte Messungen. Ein klarer Blick.",
                         )
                       : page === "history"
                         ? tr(
@@ -589,7 +722,7 @@ export default function App() {
                       icon={ShieldCheck}
                     />
                   </div>
-                  <div className="dashboard-columns">
+                  <div className="dashboard-columns dashboard-primary">
                     <section className="panel chart-panel">
                       <div className="panel-heading">
                         <div>
@@ -642,14 +775,18 @@ export default function App() {
                         <Sparkles size={15} />{" "}
                         {tr("A GOOD NEXT MOVE", "EIN GUTER NÄCHSTER SCHRITT")}
                       </span>
-                      <div className="orbit-mark">
-                        <ArrowUpRight size={40} />
-                      </div>
+                      <img
+                        className="next-mascot"
+                        src="/wisp.svg"
+                        width="130"
+                        height="116"
+                        alt=""
+                      />
                       <h2>
                         {active.length
                           ? tr(
-                              "Turn a signal into a small experiment.",
-                              "Mach aus einem Signal ein kleines Experiment.",
+                              "One signal. One next step.",
+                              "Ein Signal. Ein nächster Schritt.",
                             )
                           : tr(
                               "Start with what your app does best.",
@@ -659,8 +796,8 @@ export default function App() {
                       <p>
                         {active.length
                           ? tr(
-                              "Look at one relevant search. Compare the apps people actually find. Choose one thing to improve.",
-                              "Prüfe einen relevanten Suchbegriff. Vergleiche die gefundenen Apps. Wähle eine Sache, die du verbessern möchtest.",
+                              "Find a useful idea in your latest observations.",
+                              "Finde eine nützliche Idee in deinen letzten Messungen.",
                             )
                           : tr(
                               "Choose a few phrases a future user might type. Measure first, then decide.",
@@ -685,7 +822,7 @@ export default function App() {
                       </small>
                     </aside>
                   </div>
-                  <div className="dashboard-columns">
+                  <div className="dashboard-columns dashboard-secondary">
                     <section className="panel">
                       <div className="panel-heading">
                         <div>
@@ -711,7 +848,7 @@ export default function App() {
                         </button>
                       </div>
                       <KeywordTable
-                        keywords={active.slice(0, 5)}
+                        keywords={active.slice(0, 3)}
                         demo={demo}
                         onSelect={(k) => {
                           setSelectedKeyword(k.id);
@@ -1195,6 +1332,7 @@ export default function App() {
               notify={notify}
               exportData={exportData}
               importClick={() => inputFile.current.click()}
+              onReauthenticated={load}
               onDeleted={() => {
                 setMe(null);
                 setWorkspace(null);
@@ -1213,6 +1351,30 @@ export default function App() {
           </footer>
         </main>
       </div>
+      <nav
+        className="mobile-tabbar"
+        inert={sidebar || undefined}
+        aria-label={tr("Workspace navigation", "Arbeitsbereich-Navigation")}
+      >
+        {nav.map(([id, Icon, label]) => (
+          <button
+            key={id}
+            aria-current={page === id ? "page" : undefined}
+            onClick={() => navigate(id)}
+          >
+            <Icon size={20} />
+            <span>
+              {id === "history"
+                ? tr("History", "Verlauf")
+                : id === "insights"
+                  ? tr("Ideas", "Ideen")
+                  : id === "competitors"
+                    ? tr("Compare", "Vergleich")
+                    : label}
+            </span>
+          </button>
+        ))}
+      </nav>
       <input
         ref={inputFile}
         type="file"
@@ -1412,7 +1574,10 @@ function KeywordTable({
     <>
       {keywords.length ? (
         <div className="table-scroll">
-          <table>
+          <table
+            className={"keyword-table " + (management ? "managed" : "")}
+            role="table"
+          >
             <thead>
               <tr>
                 <th>Keyword</th>
@@ -1448,7 +1613,7 @@ function KeywordTable({
                         {k.text}
                       </button>
                     </td>
-                    <td>
+                    <td data-label={tr("Position", "Position")}>
                       <strong>
                         {!s
                           ? "—"
@@ -1457,7 +1622,7 @@ function KeywordTable({
                             : s.rank}
                       </strong>
                     </td>
-                    <td>
+                    <td data-label={tr("Change", "Änderung")}>
                       <Delta current={s?.rank} previous={p?.rank} />
                     </td>
                     <td>
@@ -1561,14 +1726,62 @@ function KeywordModal({ onClose, onSave }) {
     </Modal>
   );
 }
-function Auth({ onReady, config, notice }) {
+function Auth({ onReady, config, notice, onRetry }) {
   const { tr, locale, setLocale } = useLocale();
-  const [register, setRegister] = useState(false),
+  const authController = useRef(null);
+  useEffect(() => () => authController.current?.abort(), []);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false),
+    [register, setRegister] = useState(false),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [invite, setInvite] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(() => {
+      const code = new URLSearchParams(location.search).get("authError");
+      return [
+        "GOOGLE_NOT_CONFIGURED",
+        "GOOGLE_CANCELLED",
+        "ACCOUNT_LINK_REQUIRED",
+        "GOOGLE_AUTH_FAILED",
+      ].includes(code)
+        ? errorText(code, locale)
+        : "";
+    });
+  useEffect(() => {
+    const url = new URL(location.href);
+    if (url.searchParams.has("authError")) {
+      url.searchParams.delete("authError");
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
+  }, []);
+  async function google() {
+    setBusy(true);
+    setGoogleBusy(true);
+    setError("");
+    authController.current = new AbortController();
+    try {
+      await beginGoogleSignIn({ signal: authController.current.signal });
+      if (native) await onReady();
+    } catch (e) {
+      setError(errorText(e.message, locale));
+    } finally {
+      setBusy(false);
+      setGoogleBusy(false);
+      authController.current = null;
+    }
+  }
+  async function retry() {
+    setBusy(true);
+    setError("");
+    try {
+      await onRetry();
+    } catch (e) {
+      setError(errorText(e.message, locale));
+    } finally {
+      setBusy(false);
+    }
+  }
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -1616,16 +1829,12 @@ function Auth({ onReady, config, notice }) {
           )}
         </p>
         <div className="auth-art">
-          <span />
-          <span />
-          <span />
-          <span />
-          <ArrowUpRight size={56} />
+          <img src="/wisp.svg" width="380" height="340" alt="" />
         </div>
       </div>
       <section className="auth-card">
         <span className="auth-icon">
-          <Sun size={26} />
+          <img src="/mark.svg" width="52" height="52" alt="" />
         </span>
         <h2>
           {register
@@ -1648,70 +1857,141 @@ function Auth({ onReady, config, notice }) {
         </p>
         {(error || notice) && (
           <div className="notice error" role="alert">
-            {error || notice.text}
+            <span>{error || notice.text}</span>
+            <button
+              type="button"
+              className="text-button"
+              onClick={retry}
+              disabled={busy}
+            >
+              <RefreshCw size={14} />
+              {tr("Try again", "Erneut versuchen")}
+            </button>
           </div>
         )}
-        <form onSubmit={submit}>
-          <label className="field">
-            {tr("Email", "E-Mail")}
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            {tr("Password", "Passwort")}
-            <input
-              aria-label={tr("Password", "Passwort")}
-              type="password"
-              minLength="12"
-              required
-              autoComplete={register ? "new-password" : "current-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {register && (
-              <span>
-                {tr("At least 12 characters.", "Mindestens 12 Zeichen.")}
-              </span>
-            )}
-          </label>
-          {register && !config.registrationOpen && (
-            <label className="field">
-              {tr("Preview invitation", "Vorschau-Einladung")}
-              <input
-                value={invite}
-                onChange={(e) => setInvite(e.target.value)}
-              />
-            </label>
-          )}
-          <Button type="submit" loading={busy}>
-            {register
-              ? tr("Start my 24 days", "Meine 24 Tage starten")
-              : tr("Sign in", "Anmelden")}{" "}
-            <ArrowRight size={16} />
-          </Button>
-        </form>
-        <button
-          className="text-button auth-toggle"
-          onClick={() => {
-            setRegister(!register);
-            setError("");
-          }}
+        <Button
+          className="google-button"
+          variant="secondary"
+          onClick={google}
+          loading={busy}
         >
-          {register
-            ? tr(
-                "Already have an account? Sign in",
-                "Schon ein Konto? Anmelden",
-              )
-            : tr(
-                "New here? Start your free trial",
-                "Neu hier? Kostenlos testen",
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="#4285F4"
+              d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.98-4.31 2.98-7.36Z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.23-2.51c-.9.6-2.04.96-3.39.96-2.6 0-4.8-1.76-5.59-4.12H3.07v2.59A10 10 0 0 0 12 22Z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M6.41 13.92a6.04 6.04 0 0 1 0-3.84V7.49H3.07a10 10 0 0 0 0 9.02l3.34-2.59Z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.96c1.47 0 2.79.5 3.83 1.5L18.7 4.6A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.93 5.49l3.34 2.59A5.97 5.97 0 0 1 12 5.96Z"
+            />
+          </svg>
+          {tr("Continue with Google", "Mit Google fortfahren")}
+        </Button>
+        {googleBusy && native && (
+          <button
+            className="text-button auth-cancel"
+            onClick={() => authController.current?.abort()}
+          >
+            {tr("Cancel sign-in", "Anmeldung abbrechen")}
+          </button>
+        )}
+        {config.googleConfigured === false && (
+          <p className="auth-provider-note">
+            {config.authProvider === "google"
+              ? tr(
+                  "Google sign-in is temporarily unavailable. Please try again later or contact support.",
+                  "Google-Anmeldung ist vorübergehend nicht verfügbar. Versuche es später oder kontaktiere den Support.",
+                )
+              : tr(
+                  "Google sign-in is not available yet. You can use email below.",
+                  "Google-Anmeldung ist noch nicht verfügbar. Du kannst unten E-Mail verwenden.",
+                )}
+          </p>
+        )}
+        {config.authProvider !== "google" && (
+          <button
+            className="email-disclosure"
+            aria-expanded={emailOpen}
+            onClick={() => setEmailOpen(!emailOpen)}
+          >
+            <Mail size={15} />
+            {tr("Continue with email", "Mit E-Mail fortfahren")}
+            <ChevronDown size={15} />
+          </button>
+        )}
+        {emailOpen && config.authProvider !== "google" && (
+          <div className="email-auth">
+            <form onSubmit={submit}>
+              <label className="field">
+                {tr("Email", "E-Mail")}
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                {tr("Password", "Passwort")}
+                <input
+                  aria-label={tr("Password", "Passwort")}
+                  type="password"
+                  minLength="12"
+                  required
+                  autoComplete={register ? "new-password" : "current-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                {register && (
+                  <span>
+                    {tr("At least 12 characters.", "Mindestens 12 Zeichen.")}
+                  </span>
+                )}
+              </label>
+              {register && !config.registrationOpen && (
+                <label className="field">
+                  {tr("Preview invitation", "Vorschau-Einladung")}
+                  <input
+                    value={invite}
+                    onChange={(e) => setInvite(e.target.value)}
+                  />
+                </label>
               )}
-        </button>
+              <Button type="submit" loading={busy}>
+                {register
+                  ? tr("Start my 24 days", "Meine 24 Tage starten")
+                  : tr("Sign in", "Anmelden")}{" "}
+                <ArrowRight size={16} />
+              </Button>
+            </form>
+            <button
+              className="text-button auth-toggle"
+              onClick={() => {
+                setRegister(!register);
+                setError("");
+              }}
+            >
+              {register
+                ? tr(
+                    "Already have an account? Sign in",
+                    "Schon ein Konto? Anmelden",
+                  )
+                : tr(
+                    "New here? Start your free trial",
+                    "Neu hier? Kostenlos testen",
+                  )}
+            </button>
+          </div>
+        )}
         <a className="auth-demo" href="/app?demo=1">
           {tr("Take a look around first", "Zuerst einen Blick hineinwerfen")}{" "}
           <ArrowUpRight size={14} />
@@ -1979,13 +2259,29 @@ function SettingsPage({
   notify,
   exportData,
   importClick,
+  onReauthenticated,
   onDeleted,
 }) {
   const { tr, locale, setLocale, date } = useLocale();
+  const [settingsTab, setSettingsTab] = useState("plan");
+  const settingsTabs = [
+    ["plan", tr("Plan & usage", "Lizenz")],
+    ["preferences", tr("Preferences", "Präferenzen")],
+    ["data", tr("Your data", "Deine Daten")],
+    ["account", tr("Account", "Konto")],
+  ];
   const [terms, setTerms] = useState(false),
     [deleteOpen, setDeleteOpen] = useState(false),
     [password, setPassword] = useState(""),
     [recoveries, setRecoveries] = useState(null);
+  const googleOnly =
+    me.hasPassword === false || me.account?.hasPassword === false;
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  useEffect(() => {
+    setDeleteConfirmation("");
+    setPassword("");
+    setDeleteOpen(false);
+  }, [me.account.id]);
   const [changeOpen, setChangeOpen] = useState(false),
     [newPassword, setNewPassword] = useState("");
   async function purchase() {
@@ -2006,8 +2302,12 @@ function SettingsPage({
     await action("restore", async () => {
       if (ios) {
         const result = await Store.restore();
-        for (const tx of result.transactions)
-          await api("/billing/apple", { signedTransaction: tx });
+        for (const tx of result.transactions) {
+          await api("/billing/apple", {
+            signedTransaction: tx.signedTransaction,
+          });
+          await Store.finish({ transactionID: tx.transactionID });
+        }
       }
       const restored = await api("/billing/restore", {});
       notify(
@@ -2022,8 +2322,49 @@ function SettingsPage({
     });
   }
   return (
-    <div className="settings-grid">
-      <section className="panel settings-panel">
+    <div className="settings-grid" data-tab={settingsTab}>
+      <nav
+        className="settings-tabs"
+        role="tablist"
+        aria-label={tr("Settings sections", "Einstellungsbereiche")}
+      >
+        {settingsTabs.map(([id, label], index) => (
+          <button
+            role="tab"
+            key={id}
+            id={"settings-tab-" + id}
+            aria-controls={"settings-panel-" + id}
+            aria-selected={settingsTab === id}
+            tabIndex={settingsTab === id ? 0 : -1}
+            onClick={() => setSettingsTab(id)}
+            onKeyDown={(e) => {
+              let next;
+              if (e.key === "ArrowRight")
+                next = (index + 1) % settingsTabs.length;
+              if (e.key === "ArrowLeft")
+                next = (index + settingsTabs.length - 1) % settingsTabs.length;
+              if (e.key === "Home") next = 0;
+              if (e.key === "End") next = settingsTabs.length - 1;
+              if (next !== undefined) {
+                e.preventDefault();
+                setSettingsTab(settingsTabs[next][0]);
+                document
+                  .getElementById("settings-tab-" + settingsTabs[next][0])
+                  ?.focus();
+              }
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      <section
+        className="panel settings-panel"
+        data-setting="plan"
+        role="tabpanel"
+        id="settings-panel-plan"
+        aria-labelledby="settings-tab-plan"
+      >
         <span className="eyebrow">
           {tr("SIMPLE BY DESIGN", "BEWUSST EINFACH")}
         </span>
@@ -2056,11 +2397,22 @@ function SettingsPage({
             <strong>{me.license.aiRemaining}</strong>
             <span>{tr("AI notes left", "KI-Hinweise übrig")}</span>
           </div>
+          {me.storage && (
+            <div>
+              <strong>
+                {(me.storage.bytes / 1048576).toFixed(1)} /{" "}
+                {(me.storage.limitBytes / 1048576).toFixed(0)}
+              </strong>
+              <span>
+                {tr("MB workspace storage", "MB Arbeitsbereich-Speicher")}
+              </span>
+            </div>
+          )}
         </div>
         <p className="small muted">
           {tr(
-            "Trial: 120 checks + 8 AI notes. Purchase: 5,000 total checks + 100 total AI notes, including trial usage. Budget limits also apply. No unlimited lifetime cloud service. Reading and exporting always remain available.",
-            "Testphase: 120 Abfragen + 8 KI-Hinweise. Kauf: insgesamt 5’000 Abfragen + 100 KI-Hinweise, inklusive Testnutzung. Zusätzlich gelten Kostenlimits. Kein unbegrenzter lebenslanger Cloud-Dienst. Lesen und Exportieren bleiben verfügbar.",
+            "Trial: 120 checks + 8 AI notes. Purchase: 5,000 total checks + 100 total AI notes, including trial usage. Budget limits also apply. No unlimited lifetime cloud service. Each workspace includes 16 MB of stored history. Reading and exporting always remain available.",
+            "Testphase: 120 Abfragen + 8 KI-Hinweise. Kauf: insgesamt 5’000 Abfragen + 100 KI-Hinweise, inklusive Testnutzung. Zusätzlich gelten Kostenlimits. Kein unbegrenzter lebenslanger Cloud-Dienst. Jeder Arbeitsbereich enthält 16 MB für gespeicherte Verläufe. Lesen und Exportieren bleiben verfügbar.",
           )}
         </p>
         {me.license.state === "pending" && (
@@ -2131,7 +2483,13 @@ function SettingsPage({
           {tr("Restore purchase", "Kauf wiederherstellen")}
         </button>
       </section>
-      <section className="panel settings-panel">
+      <section
+        className="panel settings-panel"
+        data-setting="preferences"
+        role="tabpanel"
+        id="settings-panel-preferences"
+        aria-labelledby="settings-tab-preferences"
+      >
         <h2>{tr("Make yourself at home.", "Richte dich ein.")}</h2>
         <label className="field">
           {tr("Language", "Sprache")}
@@ -2195,7 +2553,13 @@ function SettingsPage({
           )}
         </p>
       </section>
-      <section className="panel settings-panel">
+      <section
+        className="panel settings-panel"
+        data-setting="data"
+        role="tabpanel"
+        id="settings-panel-data"
+        aria-labelledby="settings-tab-data"
+      >
         <h2>
           {tr("Your data travels with you.", "Deine Daten bleiben bei dir.")}
         </h2>
@@ -2259,7 +2623,13 @@ function SettingsPage({
           )}
         </div>
       </section>
-      <section className="panel settings-panel">
+      <section
+        className="panel settings-panel"
+        data-setting="account"
+        role="tabpanel"
+        id="settings-panel-account"
+        aria-labelledby="settings-tab-account"
+      >
         <h2>{tr("Account & privacy", "Konto & Datenschutz")}</h2>
         <p>{me.account.email}</p>
         <a href="mailto:info@zhstudio.ch" className="text-button">
@@ -2273,9 +2643,16 @@ function SettingsPage({
           )}
         </p>
         <div className="settings-actions">
-          <Button variant="secondary" onClick={() => setChangeOpen(true)}>
-            {tr("Change password", "Passwort ändern")}
-          </Button>
+          {!googleOnly && (
+            <Button variant="secondary" onClick={() => setChangeOpen(true)}>
+              {tr("Change password", "Passwort ändern")}
+            </Button>
+          )}
+          {googleOnly && (
+            <span className="pill">
+              {tr("Signed in with Google", "Mit Google angemeldet")}
+            </span>
+          )}
           <Button variant="danger" onClick={() => setDeleteOpen(true)}>
             {tr("Delete my account", "Mein Konto löschen")}
           </Button>
@@ -2336,20 +2713,63 @@ function SettingsPage({
               "Dies löscht deinen Arbeitsbereich, Importsicherungen und Sitzungen auf diesem Server dauerhaft. Exportiere sie vorher, wenn du sie behalten möchtest. Käufe werden nicht automatisch erstattet.",
             )}
           </p>
-          <label className="field">
-            {tr("Confirm with your password", "Mit deinem Passwort bestätigen")}
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
+          {googleOnly ? (
+            <label className="field">
+              {tr("Type DELETE to confirm", "Zur Bestätigung DELETE eingeben")}
+              <input
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                autoComplete="off"
+              />
+              <span>
+                {tr(
+                  "A recent Google sign-in is required. You may be asked to sign in again.",
+                  "Eine aktuelle Google-Anmeldung ist nötig. Möglicherweise musst du dich erneut anmelden.",
+                )}
+              </span>
+            </label>
+          ) : (
+            <label className="field">
+              {tr(
+                "Confirm with your password",
+                "Mit deinem Passwort bestätigen",
+              )}
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+          )}
           <Button
             variant="danger"
+            disabled={googleOnly ? deleteConfirmation !== "DELETE" : !password}
             onClick={() =>
               action("delete", async () => {
-                await api("/account", { password }, "DELETE");
+                try {
+                  await api(
+                    "/account",
+                    googleOnly ? { confirm: "DELETE" } : { password },
+                    "DELETE",
+                  );
+                } catch (e) {
+                  if (!googleOnly || e.message !== "REAUTH_REQUIRED") throw e;
+                  await beginGoogleSignIn();
+                  if (native) {
+                    await onReauthenticated();
+                    setDeleteConfirmation("");
+                    setDeleteOpen(false);
+                    notify(
+                      tr(
+                        "Signed in again. Review the account shown in Settings before requesting deletion again.",
+                        "Erneut angemeldet. Prüfe das in den Einstellungen angezeigte Konto, bevor du das Löschen erneut anforderst.",
+                      ),
+                      "info",
+                    );
+                  }
+                  return;
+                }
                 clearToken();
                 setDeleteOpen(false);
                 onDeleted();

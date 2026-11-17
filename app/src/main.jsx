@@ -4,6 +4,7 @@ import App from "./App";
 import { Marketing } from "./marketing";
 import { LocaleProvider } from "./i18n";
 import "./style.css";
+import "./identity.css";
 const path = location.pathname;
 const isApp =
   path.startsWith("/app") ||

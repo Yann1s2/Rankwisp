@@ -31,7 +31,7 @@ test("marketing EN/DE, navigation and responsive layout", async ({ page }) => {
     page.getByRole("link", { name: "So funktioniert’s", exact: true }),
   ).toBeVisible();
   await page.screenshot({
-    path: "../../../outputs/Rankwisp/screenshots/website-mobile-de.png",
+    path: "../screenshots/website-mobile-de.png",
     fullPage: true,
   });
   expect(errors).toEqual([]);
@@ -41,7 +41,7 @@ test("demo navigation, real chart log, keyboard and reduced motion", async ({
 }) => {
   await page.goto("/app?demo=1");
   await expect(
-    page.getByRole("heading", { name: "A clearer view of your growth." }),
+    page.getByRole("heading", { name: "Your app, at a glance." }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Rank history", exact: true }).click();
   await expect(
@@ -78,6 +78,7 @@ test("real backend registration, import, archive, export, AI fallback and sign o
   page,
 }) => {
   await page.goto("/app");
+  await page.getByRole("button", { name: "Continue with email", exact: true }).click();
   await page
     .getByRole("button", { name: "New here? Start your free trial" })
     .click();
@@ -139,7 +140,7 @@ test("real backend registration, import, archive, export, AI fallback and sign o
     .getByRole("button", { name: "Import & keep recovery copy" })
     .click();
   await expect(
-    page.getByRole("heading", { name: "A clearer view of your growth." }),
+    page.getByRole("heading", { name: "Your app, at a glance." }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Keywords", exact: true }).click();
   await page.getByRole("button", { name: "Archive", exact: true }).click();
@@ -154,6 +155,7 @@ test("real backend registration, import, archive, export, AI fallback and sign o
     page.getByText("AI is off until you choose to share this data."),
   ).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("tab", { name: "Your data", exact: true }).click();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export everything" }).click();
   expect((await download).suggestedFilename()).toBe("rankwisp-export.json");
@@ -197,6 +199,7 @@ test("onboarding state machine with injected Apple fixtures", async ({
     route.fulfill({ json: { id: "created-qa" } }),
   );
   await page.goto("/app");
+  await page.getByRole("button", { name: "Continue with email", exact: true }).click();
   await page
     .getByRole("button", { name: "New here? Start your free trial" })
     .click();
@@ -228,4 +231,54 @@ test("onboarding state machine with injected Apple fixtures", async ({
       name: "Synthetic rival Same category · Productivity",
     }),
   ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("Google-only configuration and cancelled login work without modern AbortSignal statics", async ({ page }) => {
+  await page.addInitScript(() => { AbortSignal.timeout = undefined; AbortSignal.any = undefined; });
+  await page.route("**/api/config", route => route.fulfill({json:{authProvider:"google",googleConfigured:false}}));
+  await page.goto("/app?authError=GOOGLE_CANCELLED");
+  await expect(page.getByRole("button", {name:"Continue with Google",exact:true})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Continue with email",exact:true})).toHaveCount(0);
+  await expect(page.getByText("Google sign-in is temporarily unavailable. Please try again later or contact support.")).toBeVisible();
+  await expect(page).not.toHaveURL(/authError/);
+  expect(await page.locator("body").innerText()).not.toContain("The server is unavailable");
+});
+
+test("all app views fit phone, landscape, tablet and short desktop without page overflow", async ({ page }) => {
+  test.setTimeout(90000);
+  await page.goto("/app?demo=1");
+  const views=["Overview","Keywords","Rank history","Competitors","Next moves","Settings"];
+  for (const [width,height] of [[375,667],[390,844],[844,390],[768,1024],[1440,800]]) {
+    await page.setViewportSize({width,height});
+    for(const name of views) {
+      await test.step(`${width}×${height}: ${name}`, async () => {
+      const button=page.getByRole("button",{name,exact:true});
+      if (!(await button.isVisible())) await page.getByRole("button",{name:"Open navigation"}).click();
+      await button.click();
+      await expect.poll(()=>page.evaluate(()=>({x:document.documentElement.scrollWidth<=innerWidth,y:document.documentElement.scrollHeight<=innerHeight}))).toEqual({x:true,y:true});
+      await page.mouse.wheel(1000,1000);
+      expect(await page.evaluate(()=>({x:scrollX,y:scrollY}))).toEqual({x:0,y:0});
+      });
+    }
+  }
+  await page.getByRole("tab",{name:"Plan & usage",exact:true}).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab",{name:"Preferences",exact:true})).toHaveAttribute("aria-selected","true");
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab",{name:"Account",exact:true})).toHaveAttribute("aria-selected","true");
+});
+
+test("primary website, authentication and app views pass serious accessibility checks", async ({page}) => {
+  test.setTimeout(90000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const {default:AxeBuilder}=await import("@axe-core/playwright");
+  const results=[];
+  for(const route of ["/en/","/app","/app?demo=1"]) {
+    await page.goto(route);
+    if(route.includes("demo")) await expect(page.getByRole("heading",{name:"Your app, at a glance."})).toBeVisible();
+    else if(route==="/app") await expect(page.getByRole("button",{name:"Continue with Google",exact:true})).toBeVisible();
+    const audit=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
+    results.push(...audit.violations.filter(v=>["critical","serious"].includes(v.impact)).map(v=>({route,id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})));
+  }
+  expect(results).toEqual([]);
 });

@@ -11,13 +11,49 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "getSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setSession", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openAuth", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "product", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "unfinished", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finish", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "shareExport", returnType: CAPPluginReturnPromise)
     ]
-    private var keychainQuery: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "ch.zhstudio.rankwisp.session", kSecAttrAccount as String: "session"] }
+    private let productID = "ch.zhstudio.rankwisp.lifetime"
+    private let trialID = "ch.zhstudio.rankwisp.trial24"
+    private var transactionTask: Task<Void, Never>?
+
+    public override func load() {
+        transactionTask = Task { [weak self] in
+            for await result in Transaction.updates {
+                if Task.isCancelled { return }
+                guard let self, case .verified(let transaction) = result,
+                      self.supported(transaction) else { continue }
+                let payload = self.payload(result, transaction)
+                DispatchQueue.main.async { [weak self] in
+                    self?.notifyListeners("transactionUpdated", data: payload, retainUntilConsumed: true)
+                }
+            }
+        }
+    }
+
+    deinit { transactionTask?.cancel() }
+
+    private func supported(_ transaction: Transaction) -> Bool {
+        [productID, trialID].contains(transaction.productID)
+    }
+
+    private func payload(_ result: VerificationResult<Transaction>, _ transaction: Transaction) -> [String: Any] {
+        ["signedTransaction": result.jwsRepresentation, "transactionID": String(transaction.id)]
+    }
+
+    private var keychainQuery: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: "ch.zhstudio.rankwisp.session",
+         kSecAttrAccount as String: "session"]
+    }
+
     @objc func getSession(_ call: CAPPluginCall) {
         var query = keychainQuery
         query[kSecReturnData as String] = true
@@ -25,20 +61,77 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { call.resolve(["token": ""]); return }
-        guard status == errSecSuccess, let data = result as? Data, let token = String(data: data, encoding: .utf8) else { call.reject("SECURE_STORAGE_UNAVAILABLE"); return }
+        guard status == errSecSuccess, let data = result as? Data,
+              let token = String(data: data, encoding: .utf8) else {
+            call.reject("SECURE_STORAGE_UNAVAILABLE"); return
+        }
         call.resolve(["token": token])
     }
+
     @objc func setSession(_ call: CAPPluginCall) {
-        guard let token = call.getString("token"), token.isEmpty || token.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil else { call.reject("INVALID_SESSION"); return }
-        SecItemDelete(keychainQuery as CFDictionary)
-        if token.isEmpty { call.resolve(); return }
-        var item = keychainQuery
-        item[kSecValueData as String] = Data(token.utf8)
-        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { call.reject("SECURE_STORAGE_UNAVAILABLE"); return }
+        guard let token = call.getString("token"), token.isEmpty || token.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil else {
+            call.reject("INVALID_SESSION"); return
+        }
+        if token.isEmpty {
+            let status = SecItemDelete(keychainQuery as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else { call.reject("SECURE_STORAGE_UNAVAILABLE"); return }
+            call.resolve(); return
+        }
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(token.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        var status = SecItemUpdate(keychainQuery as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var item = keychainQuery
+            attributes.forEach { item[$0.key] = $0.value }
+            status = SecItemAdd(item as CFDictionary, nil)
+        }
+        guard status == errSecSuccess else { call.reject("SECURE_STORAGE_UNAVAILABLE"); return }
         call.resolve()
     }
-    private let productID = "ch.zhstudio.rankwisp.lifetime"
+
+    private var configuredAPI: URL? {
+        guard let file = Bundle.main.url(forResource: "native-config", withExtension: "json", subdirectory: "public"),
+              let data = try? Data(contentsOf: file),
+              let config = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let raw = config["apiOrigin"] as? String, let url = URL(string: raw),
+              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
+              url.path.isEmpty || url.path == "/" else { return nil }
+        if url.scheme == "https", url.host != nil { return url }
+        if config["development"] as? Bool == true, url.scheme == "http",
+           ["127.0.0.1", "localhost", "[::1]", "::1"].contains(url.host ?? "") { return url }
+        return nil
+    }
+
+    @objc func openAuth(_ call: CAPPluginCall) {
+        guard let raw = call.getString("url"), raw.utf8.count <= 16000,
+              let url = URL(string: raw), let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              url.user == nil, url.password == nil, url.fragment == nil else { call.reject("INVALID_AUTH_URL"); return }
+        let google = url.scheme == "https" && url.host == "accounts.google.com" && url.path == "/o/oauth2/v2/auth" && url.port == nil
+        let items = parts.queryItems ?? []
+        let api = configuredAPI
+        let ticket = api != nil && url.scheme == api?.scheme && url.host == api?.host && url.port == api?.port
+            && url.path == "/api/auth/google/start" && items.count == 1 && items[0].name == "ticket"
+            && items[0].value?.range(of: "^[A-Za-z0-9_-]{43}$", options: .regularExpression) != nil
+        guard google || ticket else { call.reject("INVALID_AUTH_URL"); return }
+        // Open the backend ticket first so its HttpOnly browser binding is set before Google redirects.
+        DispatchQueue.main.async {
+            UIApplication.shared.open(url, options: [:]) { opened in
+                if opened { call.resolve() } else { call.reject("AUTH_BROWSER_UNAVAILABLE") }
+            }
+        }
+    }
+
+    @objc func haptic(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let feedback = UIImpactFeedbackGenerator(style: .light)
+            feedback.prepare()
+            feedback.impactOccurred()
+            call.resolve()
+        }
+    }
+
     @objc func product(_ call: CAPPluginCall) {
         Task {
             do {
@@ -47,18 +140,19 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
             } catch { call.reject("STORE_UNAVAILABLE") }
         }
     }
+
     @objc func purchase(_ call: CAPPluginCall) {
         guard let value = call.getString("accountToken"), let account = UUID(uuidString: value) else { call.reject("INVALID_ACCOUNT"); return }
         Task {
             do {
-                let selectedID = call.getBool("trial") == true ? "ch.zhstudio.rankwisp.trial24" : productID
+                let selectedID = call.getBool("trial") == true ? trialID : productID
                 guard let item = try await Product.products(for: [selectedID]).first else { call.reject("PAYMENTS_NOT_CONFIGURED"); return }
                 let outcome = try await item.purchase(options: [.appAccountToken(account)])
                 switch outcome {
                 case .success(let result):
                     guard case .verified(let transaction) = result else { call.reject("INVALID_PURCHASE"); return }
-                    // Finish only after the backend has verified this JWS and granted access.
-                    call.resolve(["signedTransaction": result.jwsRepresentation, "transactionID": String(transaction.id)])
+                    // JS must verify with our backend before calling finish. Failed delivery stays unfinished.
+                    call.resolve(payload(result, transaction))
                 case .pending: call.reject("PURCHASE_PENDING")
                 case .userCancelled: call.reject("PURCHASE_CANCELLED")
                 @unknown default: call.reject("STORE_UNAVAILABLE")
@@ -66,45 +160,68 @@ public class RankwispStorePlugin: CAPPlugin, CAPBridgedPlugin {
             } catch { call.reject("STORE_UNAVAILABLE") }
         }
     }
+
+    @objc func unfinished(_ call: CAPPluginCall) {
+        Task {
+            var transactions = [[String: Any]]()
+            for await result in Transaction.unfinished {
+                if case .verified(let transaction) = result, supported(transaction) {
+                    transactions.append(payload(result, transaction))
+                }
+            }
+            call.resolve(["transactions": transactions])
+        }
+    }
+
     @objc func finish(_ call: CAPPluginCall) {
         guard let raw = call.getString("transactionID"), let id = UInt64(raw) else { call.reject("INVALID_PURCHASE"); return }
         Task {
             for await result in Transaction.unfinished {
-                if case .verified(let transaction) = result, transaction.id == id { await transaction.finish() }
+                if case .verified(let transaction) = result, transaction.id == id, supported(transaction) {
+                    await transaction.finish()
+                }
             }
             call.resolve()
         }
     }
+
     @objc func restore(_ call: CAPPluginCall) {
         Task {
             do {
                 try await AppStore.sync()
-                var transactions = [String]()
+                var transactions = [[String: Any]]()
                 for await result in Transaction.currentEntitlements {
-                    if case .verified(let transaction) = result, [productID, "ch.zhstudio.rankwisp.trial24"].contains(transaction.productID) {
-                        transactions.append(result.jwsRepresentation)
+                    if case .verified(let transaction) = result, supported(transaction) {
+                        transactions.append(payload(result, transaction))
                     }
                 }
                 call.resolve(["transactions": transactions])
             } catch { call.reject("STORE_UNAVAILABLE") }
         }
     }
+
     @objc func shareExport(_ call: CAPPluginCall) {
         guard let text = call.getString("content"), text.utf8.count <= 20_000_000 else { call.reject("INVALID_EXPORT"); return }
         DispatchQueue.main.async {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("rankwisp-export-" + UUID().uuidString)
             do {
-                let folder = FileManager.default.temporaryDirectory.appendingPathComponent("rankwisp-export-" + UUID().uuidString)
+                guard let presenter = self.bridge?.viewController, presenter.presentedViewController == nil else {
+                    call.reject("EXPORT_FAILED"); return
+                }
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 let file = folder.appendingPathComponent("rankwisp-export.json")
                 try Data(text.utf8).write(to: file, options: [.atomic, .completeFileProtection])
                 let sheet = UIActivityViewController(activityItems: [file], applicationActivities: nil)
                 sheet.completionWithItemsHandler = { _, _, _, _ in try? FileManager.default.removeItem(at: folder) }
-                if let popover = sheet.popoverPresentationController, let view = self.bridge?.viewController?.view {
-                    popover.sourceView = view; popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+                if let popover = sheet.popoverPresentationController {
+                    popover.sourceView = presenter.view
+                    popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
                 }
-                self.bridge?.viewController?.present(sheet, animated: true)
-                call.resolve()
-            } catch { call.reject("EXPORT_FAILED") }
+                presenter.present(sheet, animated: true) { call.resolve() }
+            } catch {
+                try? FileManager.default.removeItem(at: folder)
+                call.reject("EXPORT_FAILED")
+            }
         }
     }
 }
@@ -113,4 +230,5 @@ class RankwispViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(RankwispStorePlugin())
     }
+    override var preferredStatusBarStyle: UIStatusBarStyle { .darkContent }
 }

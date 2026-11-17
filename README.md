@@ -1,136 +1,97 @@
-# Rankwisp — internationale Rankblick-Weiterentwicklung
+# Rankwisp
 
-Eine separate lokale Umsetzung mit neuer Arbeitsmarke, englischer/deutscher Website,
-gemeinsamer App-Oberfläche, eigenem Server und nativen Desktop-/iOS-Paketen.
-Die installierte Rankblick-App und ihre Produktivdaten wurden nicht verändert.
+App-Store-Recherche und Keyword-Verläufe für Web, macOS, Windows und iOS. Gemeinsame
+React-Oberfläche mit eigenständiger Wisp-Marke, englischer/deutscher Website und
+Cloudflare-Backend. Bestehende Rankblick-Installationen und persönliche Daten wurden
+nicht verändert oder automatisch hochgeladen.
 
-## Ansehen und starten
+- Website/App: https://rankwisp.pages.dev · `/app?demo=1` zeigt ausdrücklich Beispieldaten.
+- Privates Repository: https://github.com/Yann1s2/Rankwisp
+- Support: **info@zhstudio.ch**
+- Aktueller Prüfstand und verbleibende Freigaben: [QA](docs/QA.md).
+- Betrieb und Deployment: [Operations](docs/OPERATIONS.md).
+- Google-Einrichtung und Architektur: [Backend](docs/CLOUDFLARE-BACKEND.md).
+- Gestaltung: [Designsystem](docs/DESIGN-SYSTEM.md).
 
-Auf diesem Mac `Start-preview.command` öffnen. Der Launcher startet den lokalen Server
-und öffnet http://127.0.0.1:4318/de/. Node.js 22.20+ erforderlich. Alternativ im Ordner `app`:
+## Funktionen
 
-```sh
-npm ci
-npm run build
-npm run server
-```
+App-Suche in 20 Ländern über Apples echte Search/Lookup API, dreistufiges Onboarding,
+begründete Konkurrenzvorschläge, Keyword-Gruppen/Archiv, dauerhafte Messaufträge,
+Verläufe mit Lücken/Fehlern/Quellenbelegen, Vergleichskurven und zugängliches Messprotokoll.
+Verlustfreier JSON-Import mit Vorschau, Konfliktschutz und Wiederherstellungskopien;
+Export bleibt auch nach Testphasenende erreichbar. Arbeitsbereiche sind auf 16 MiB
+kompaktes JSON begrenzt; Überschreitungen werden ohne Datenverlust abgewiesen.
 
-- Website: http://127.0.0.1:4318/de/
-- App und echte Kontoerstellung: http://127.0.0.1:4318/app
-- Klar gekennzeichnete Beispieldaten: http://127.0.0.1:4318/app?demo=1
-- Die Demo wird niemals in ein echtes Konto übernommen. Neue Konten sind leer.
-- Die Website bleibt `noindex`. Nichts wurde öffentlich veröffentlicht.
+Google OIDC mit PKCE, State, Nonce und signierten Tokenprüfungen ist implementiert.
+Websessions sind HttpOnly; native Sessions liegen in Keychain bzw. OS-safeStorage.
+**Echte Google-Anmeldungen benötigen noch die OAuth-Client-ID und das Client-Secret.**
+Bis dahin nennt die Oberfläche die fehlende Verfügbarkeit ausdrücklich; eine Demo ist
+kein echtes Konto. Der lokale Node-Server unterstützt weiterhin seine bisherigen
+E-Mail-Konten; Produktionskonten nutzen Google. Datenmigration erfolgt bewusst per
+Export/Import, nicht durch Übernahme unbestätigter E-Mail-Adressen.
 
-Die Desktoppakete sind Entwicklungsbuilds und erwarten derzeit den lokalen Server auf
-Port 4318. Für eine Verteilung ausserhalb dieses Macs ist ein HTTPS-Backend und ein
-Build mit dessen `VITE_API_ORIGIN` erforderlich. Kein Anbieter-Key befindet sich im Client.
+Optionale KI mit Luna, Einwilligung und Kostenbudgets; Stripe-Einmalkauf und verifizierte
+StoreKit-Integration sind vorbereitet. Ohne Anbieter-/Händlerkonfiguration sind diese
+Dienste deaktiviert. 24 Tage Testphase, keine automatische Belastung. CHF 49 ist weiterhin
+der Preisvorschlag; Betreiberangaben und Rechtsfreigabe sind offen. Website bleibt noindex.
+Private App-Store-Connect-Berichte bleiben im erhaltenen Swift-Bestand `legacy` und sind
+noch nicht in den gemeinsamen Client portiert.
 
-## Was funktioniert
+## Architektur
 
-- Namens-/URL-/ID-Suche in 20 App-Store-Ländern über Apples echte Search/Lookup API;
-  Original-Metadaten, Icons und App-Store-Links.
-- Dreistufiges Onboarding, begründete Konkurrenzvorschläge mit korrigierbarer Auswahl,
-  Keywords hinzufügen, gruppieren, archivieren und wiederherstellen.
-- Messungen mit echter Ergebnisposition, Ergebnislisten, HTTP-Provenienz, Historie,
-  fehlenden Treffern, Fehlern und Datenalter. Globale Apple-Drosselung, Caching,
-  optionale tägliche Servermessungen und Wiederholungsabstand nach Fehlern.
-- Monotone Diagrammkurven ohne Überschwinger, sichtbare Lücken, echte Messpunkt-Tooltips,
-  Vergleichskurven und zugängliches Messprotokoll. Reduced Motion, Tastaturbedienung,
-  mobile Navigation und Lade-/Leer-/Fehlerzustände.
-- Rankblick-JSON-Import mit Vorschau, Versionsprüfung, Konfliktschutz und Sicherung von
-  Originalupload sowie vorherigem Arbeitsbereich. Kein automatisches Lesen privater Daten.
-- Authentifizierung, isolierte Kontodaten, Passwort-Hashes, HttpOnly-Websessions;
-  native Sessions über macOS/Windows safeStorage bzw. iOS Keychain.
-- Serverbasierte 24-Tage-Testphase und begrenzte Nutzungskontingente. iOS-Free-Trial-IAP
-  und einmaliger StoreKit-Kauf vorbereitet, signierte Serverprüfung und Restore implementiert.
-- Optionaler OpenAI-Proxy: bestätigtes `gpt-6-luna`, wählbares stärkeres Modell, Einwilligung,
-  begrenzte Eingaben/Antworten, atomare Kostenreservierung, Caching und klare Offline-Hilfe.
-- Einmaliger Stripe-Checkout, signierte/idempotente Zahlungswebhooks und Refund-/Dispute-
-  Verarbeitung implementiert, ohne Händlerkonfiguration deaktiviert.
-- 12 vorgerenderte EN/DE-Seiten inkl. Preis/Testphase, Support, FAQ und gekennzeichneten
-  Rechtsentwürfen. SEO-Titel, Beschreibungen, Sitemap-/hreflang-Generator, Logo, App-Icon,
-  Social-Asset; keine erfundenen Testimonials oder nicht verfügbaren Downloadbuttons.
-
-App-Store-Connect-Berichte und die bisherige native Swift-Implementierung bleiben unter
-`legacy` erhalten. Der neue universelle Client verbindet noch keine privaten Connect-
-Schlüssel und portiert den Connect-Berichtdownload nicht auf Windows/iOS.
-
-## Verzeichnis
-
-| Pfad | Inhalt |
+| Pfad | Verantwortung |
 | --- | --- |
-| `app/src` | Gemeinsame Website/App, Lokalisierung, Designsystem |
-| `app/server` | API, SQLite, Apple, KI, Sitzungen, Trial/Lizenzen |
-| `app/shared` | Datenvertrag, Migration, Datenqualität, Kurvensegmente |
-| `app/desktop` | Electron-Sandbox und sichere Sitzungsspeicherung |
-| `app/ios` | Echtes Xcode-/Capacitor-Projekt, StoreKit, Keychain, native Exportfreigabe |
-| `app/tests` | Daten-/API-Tests und Browser-End-to-End-Tests |
-| `legacy` | Separater Swift-Bestand, privater Seed entfernt |
-| `releases` | Tatsächlich erzeugte Entwicklungsartefakte |
-| `screenshots` | Aufgenommene lokale Vorschauen |
-| `docs/QA.md` | Prüfstand und verbleibende Grenzen |
-| `docs/PRICING-AND-LEGAL.md` | Preisempfehlung, Kostenmodell, Quellen und Launch-Gates |
-| `docs/BRAND.md` | Namensrecherche und Gestaltungsgrundlagen |
+| `app/src`, `app/public` | App, Website, Lokalisierung, Designsystem, Originalillustration/Icon |
+| `app/worker` | Workers, D1-Identitäten, SQLite Durable Objects, Google OIDC, Alarme |
+| `app/functions` | Same-origin Pages-API über Worker-Service-Binding |
+| `app/server`, `app/shared` | Gemeinsame Fachlogik, lokale Express/SQLite-Alternative, Datenvertrag |
+| `app/desktop` | Electron-Sandbox, CSP, sichere Sitzungsspeicherung |
+| `app/ios` | Capacitor/Xcode, StoreKit, Keychain, Export, Haptik; iOS 15.4+ |
+| `app/tests`, `app/worker/tests` | Node-, Browser- und echte workerd-Tests |
+| `.github/workflows` | CI und vorbereiteter separater Worker-Deploy-Workflow |
+| `releases`, `screenshots` | Lokal erzeugte Artefakte und visuelle Prüfbelege |
 
-## Entwicklungsbuilds
+## Lokal entwickeln und prüfen
 
-- `releases/Rankwisp-0.1.0-mac-arm64.zip`: macOS ARM64, lokal gestartet; nicht notarisiert.
-- `releases/Rankwisp-0.1.0-win.zip`: Windows x64, gebaut; Windows-Laufzeitprüfung offen.
-- `releases/Rankwisp-0.1.0-ios-simulator.zip`: Xcode-Simulator-App, kein Geräte-IPA.
-- `releases/Rankwisp-0.1.0-source.zip`: bereinigter Quellstand einschliesslich Docs/Tests.
-
-macOS-App nach dem Start des lokalen Servers öffnen. iOS-Projekt in Xcode über
-`app/ios/App/App.xcodeproj` öffnen; zuerst im Ordner `app` `npm ci`, `npm run build`
-und `npx cap sync ios` ausführen. Die ZIPs aktivieren keine realen Zahlungsprodukte.
-
-## Sicherer Ersatz-Key
-
-Der zuvor offengelegte Key wurde weder gesucht noch übernommen. Ersatzkey nur lokal
-oder im Secret-Manager des späteren Servers hinterlegen, niemals im Chat:
+Node.js 22.20+ erforderlich. `Start-preview.command` startet weiterhin die lokale
+Node-Alternative auf Port 4318. Für den produktionsnahen Workers-Pfad:
 
 ```sh
 cd app
-cp .env.example .env
-chmod 600 .env
-```
-
-`.env` in einem lokalen Editor öffnen und `OPENAI_API_KEY` dort setzen. Sie ist von Git,
-Docker-Kontext und Quellcodearchiv ausgeschlossen. Server neu starten. Zunächst das
-Provider-Projekt auf ein kleines Kostenlimit begrenzen. Keine `VITE_`-Variable für Secrets
-verwenden: solche Variablen werden in Frontends eingebaut. KI bleibt ohne Key transparent
-ausgeschaltet; die Kernfunktionen und regelbasierte Hilfe funktionieren weiter.
-
-## Prüf- und Buildbefehle
-
-```sh
-cd app
+npm ci
 npm test
-npm run build
-# Browser installieren oder PLAYWRIGHT_CHROMIUM_PATH auf ein vorhandenes Binary setzen:
+npm run test:worker
+node worker/scripts/startup-smoke.mjs
+npm run build:pages
 npx playwright install chromium
 npm run test:browser
-npm run pack:mac
-npm run pack:win
-npx cap sync ios
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
-  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath ../../../work/ios-build CODE_SIGNING_ALLOWED=NO build
+npm run worker:dev
 ```
 
-Swift-Bestand mit **synthetischer Testfixture**, leerem Produktionsseed:
+Workers-Entwicklung benötigt die lokale D1-Migration; Details im Backend-Dokument.
+Die Node-Alternative: `npm run build && npm run server`, App auf http://127.0.0.1:4318/app.
+Nur synthetische Testdaten werden von automatisierten Tests erstellt.
+
+## Native Builds
 
 ```sh
-swift test --package-path legacy --scratch-path ../../work/legacy-build
+cd app
+node scripts/assets.mjs --native
+NATIVE_API_ORIGIN=https://rankwisp.pages.dev npm run build:native
+npm run pack:mac
+npm run pack:win
+npm run ios:sync
 ```
 
-## Vor öffentlichem Start noch erforderlich
+`build:native` verlangt eine explizite HTTPS-Adresse. Kein veröffentlichter Build fällt
+stillschweigend auf localhost zurück. Native Artefakte sind Entwicklungsbuilds;
+macOS-Signierung/Notarisierung, Windows-Laufzeitprüfung und echte iOS-Geräte-/Storetests
+bleiben gesonderte Freigaben. Ein Simulator-Build ist kein App-Store-IPA.
 
-Rechtlicher Betreibername/Adresse und Vertragsfreigabe; Markenfreigabe/Domain;
-HTTPS-Hosting und abgesicherte Backups; verifizierte E-Mail-/Wiederherstellungsprozesse;
-Ersatz-Key und tatsächlicher KI-Projekttest; Händlerkonto/Produkte und echte Kauf-/Refund-
-Tests; Apple-Free-Trial-Produkt; Signierung, Notarisierung und Store-Review; Windows-
-Laufzeitprüfung sowie iOS-Geräte-/VoiceOver-Prüfung. Der aktuelle Preview-Server erlaubt
-lokal offene Registrierung, Produktion erfordert HTTPS und einen starken Einladungscode.
+## Secrets
 
-Supportadresse ist bestätigt: **info@zhstudio.ch**. Weitere Betreiberangaben sind bewusst
-nicht erfunden. Preisvorschlag: **CHF 49 einmalig**, keine automatische Zahlung nach 24 Tagen.
+Secrets nur im Cloudflare-Secret-Manager bzw. lokal in ignorierten `.dev.vars`/`.env`
+hinterlegen. Niemals `VITE_` für Secrets verwenden. Ein zuvor offengelegter API-Key
+wurde weder gesucht noch übernommen. Google, OpenAI und Händlercredentials werden
+nicht im Chat oder Repository gespeichert. Genaue Variablen und verbleibende Schritte
+stehen in den Betriebs- und Backend-Dokumenten.

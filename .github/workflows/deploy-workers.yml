@@ -1,0 +1,48 @@
+name: Deploy Workers
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        options: [preview, production]
+        default: preview
+  push:
+    branches: [main, development]
+    paths: ['app/worker/**', 'app/server/**', 'app/shared/**', 'app/package-lock.json', '.github/workflows/deploy-workers.yml']
+permissions:
+  contents: read
+concurrency:
+  group: worker-deploy-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    # Activate only after installing a durable, scoped CI API token. Never store a
+    # short-lived local Wrangler OAuth token as a GitHub secret.
+    if: vars.CLOUDFLARE_WORKER_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOY_TARGET: ${{ inputs.target || (github.ref_name == 'main' && 'production' || 'preview') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.20.0'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm test && npm run test:worker
+      - name: Deploy verified backend
+        run: |
+          if [ "$DEPLOY_TARGET" = production ]; then
+            npx wrangler d1 migrations apply rankwisp-identity --remote --config worker/wrangler.jsonc
+            npm run worker:deploy
+          else
+            npx wrangler d1 migrations apply rankwisp-identity-preview --remote --config worker/wrangler.jsonc --env preview
+            npm run worker:preview
+          fi

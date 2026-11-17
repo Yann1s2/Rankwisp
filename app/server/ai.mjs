@@ -1,4 +1,4 @@
-import { hash, transaction } from "./db.mjs";
+import { hash, transaction } from "./db-core.mjs";
 import { license, suggestionEvidence } from "../shared/domain.mjs";
 export async function advise(
   db,
@@ -10,9 +10,27 @@ export async function advise(
     decision = false,
     fetcher = fetch,
     env = process.env,
+    reserveGlobal,
   } = {},
 ) {
-  const evidence = suggestionEvidence(project);
+  const rawEvidence = suggestionEvidence(project);
+  // Never forward imported passthrough fields or unbounded competitor descriptions.
+  const evidence = JSON.parse(
+    JSON.stringify(rawEvidence, (key, value) => {
+      if (typeof value === "string") return value.slice(0, 500);
+      if (Array.isArray(value)) return value.slice(0, 50);
+      if (key === "reason" && value && typeof value === "object")
+        return {
+          query: String(value.query || "").slice(0, 100),
+          sameCategory: value.sameCategory === true,
+          sharedWords: Array.isArray(value.sharedWords)
+            ? value.sharedWords.slice(0, 10).map((x) => String(x).slice(0, 40))
+            : [],
+          differentDeveloper: value.differentDeveloper === true,
+        };
+      return value;
+    }),
+  );
   const fallback = {
     mode: "rules",
     items: evidence.keywords.some(
@@ -51,6 +69,22 @@ export async function advise(
     !Number.isFinite(budget) ||
     budget <= 0
   )
+    return { ...fallback, reason: "AI_BUDGET" };
+  // Global service reservation occurs before local synchronous reservation. Both fail closed.
+  const currentAccount = db
+    .prepare("SELECT * FROM accounts WHERE id=?")
+    .get(account.id);
+  if (
+    !currentAccount ||
+    !license(currentAccount).writable ||
+    !license(currentAccount).aiRemaining ||
+    currentAccount.ai_spent + reserve >
+      (currentAccount.license === "paid" ? 2 : 0.16) + 1e-9
+  )
+    return { ...fallback, reason: "AI_BUDGET" };
+  if (new TextEncoder().encode(JSON.stringify(evidence)).byteLength > 24000)
+    return { ...fallback, reason: "AI_INPUT_LIMIT" };
+  if (reserveGlobal && !(await reserveGlobal(reserve)))
     return { ...fallback, reason: "AI_BUDGET" };
   const allowed = transaction(db, () => {
     const a = db.prepare("SELECT * FROM accounts WHERE id=?").get(account.id);

@@ -38,7 +38,9 @@ export function Button({ children, variant = "", loading = false, ...props }) {
   );
 }
 export function AppIcon({ app, size = 44 }) {
-  return app?.icon ? (
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [app?.icon]);
+  return app?.icon && !failed ? (
     <img
       className="app-icon"
       src={app.icon}
@@ -46,9 +48,7 @@ export function AppIcon({ app, size = 44 }) {
       width={size}
       height={size}
       loading="lazy"
-      onError={(e) => {
-        e.currentTarget.style.visibility = "hidden";
-      }}
+      onError={() => setFailed(true)}
     />
   ) : (
     <span
@@ -93,7 +93,7 @@ export function Empty({ icon: Icon = Sun, title, children, action }) {
   return (
     <div className="empty">
       <div className="empty-symbol">
-        <Icon size={26} />
+        <img src="/wisp.svg" width="132" height="118" alt="" />
       </div>
       <h3>{title}</h3>
       <p>{children}</p>
@@ -140,7 +140,7 @@ export function Modal({ title, children, onClose }) {
     </dialog>
   );
 }
-const colors = ["#426653", "#b49b6d", "#8c8bb5"];
+const colors = ["#111D4A", "#92140C", "#aa6b25"];
 export function Chart({
   keyword,
   comparison = [],
@@ -150,9 +150,25 @@ export function Chart({
   const { tr, date } = useLocale();
   const [hover, setHover] = useState(null);
   const uid = useId().replace(/:/g, "");
-  const width = 900,
-    height = 260,
-    pad = { left: 38, right: 20, top: 28, bottom: 35 };
+  const svgRef = useRef(null);
+  const [chartSize, setChartSize] = useState({ width: 900, height: 260 });
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = Math.max(240, Math.round(entry.contentRect.width));
+      const height = Math.max(110, Math.round(entry.contentRect.height));
+      setChartSize((previous) =>
+        previous.width === width && previous.height === height
+          ? previous
+          : { width, height },
+      );
+    });
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [keyword?.id, keyword?.samples?.length]);
+  const { width, height } = chartSize;
+  const pad = { left: 30, right: 18, top: 15, bottom: 27 };
   const all = keyword?.samples ?? [];
   const end = illustration ? Date.UTC(2026, 10, 17, 13) : Date.now();
   const filtered = all.filter(
@@ -222,6 +238,7 @@ export function Chart({
         </span>
       </div>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={tr(
@@ -233,8 +250,8 @@ export function Chart({
       >
         <defs>
           <linearGradient id={uid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#b9d7a9" stopOpacity=".23" />
-            <stop offset="100%" stopColor="#b9d7a9" stopOpacity="0" />
+            <stop offset="0%" stopColor="#FFCF99" stopOpacity=".23" />
+            <stop offset="100%" stopColor="#FFCF99" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[1, ...[0.33, 0.66, 1].map((n) => Math.round(ceiling * n))].map(
@@ -245,7 +262,7 @@ export function Chart({
                 x2={width - pad.right}
                 y1={y(rank)}
                 y2={y(rank)}
-                stroke="#e8ebe6"
+                stroke="#ded8d1"
                 strokeDasharray="3 5"
               />
               <text x="4" y={y(rank) + 4}>

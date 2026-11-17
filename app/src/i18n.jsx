@@ -26,6 +26,74 @@ export function LocaleProvider({ children, initial }) {
 export const useLocale = () => useContext(Context);
 export function errorText(code, locale) {
   const errors = {
+    API_NOT_CONFIGURED: [
+      "This app build has no service connection configured. Please install the current release.",
+      "Für diesen App-Build fehlt die Dienstverbindung. Installiere bitte die aktuelle Version.",
+    ],
+    SERVICE_UNAVAILABLE: [
+      "The service is temporarily unavailable. Please try again.",
+      "Der Dienst ist vorübergehend nicht verfügbar. Versuche es erneut.",
+    ],
+    REQUEST_TIMEOUT: [
+      "The request took too long. Please try again.",
+      "Die Anfrage hat zu lange gedauert. Versuche es erneut.",
+    ],
+    REQUEST_CANCELLED: [
+      "Sign-in cancelled. You can try again any time.",
+      "Anmeldung abgebrochen. Du kannst es jederzeit erneut versuchen.",
+    ],
+    SECURE_STORAGE_UNAVAILABLE: [
+      "Your device could not save this session securely. Please unlock your device and try again.",
+      "Dein Gerät konnte die Sitzung nicht sicher speichern. Entsperre es und versuche es erneut.",
+    ],
+    REFRESH_FAILED: [
+      "The measurement could not finish. Your previous history is preserved.",
+      "Die Messung konnte nicht abgeschlossen werden. Dein bisheriger Verlauf bleibt erhalten.",
+    ],
+    REFRESH_CONTINUES: [
+      "Measurements are still running on the server. Check the workspace again shortly.",
+      "Die Messungen laufen auf dem Server weiter. Prüfe den Arbeitsbereich in Kürze erneut.",
+    ],
+    IMPORT_FILE_TOO_LARGE: [
+      "This file is larger than the 48 MB upload limit. Use a Rankblick JSON export within that limit.",
+      "Diese Datei überschreitet das Uploadlimit von 48 MB. Nutze einen Rankblick-JSON-Export innerhalb dieses Limits.",
+    ],
+    IMPORT_INVALID_JSON: [
+      "This file is not valid JSON. Choose an original Rankblick export.",
+      "Diese Datei ist kein gültiges JSON. Wähle einen originalen Rankblick-Export.",
+    ],
+    WORKSPACE_STORAGE_LIMIT: [
+      "Your workspace has reached its 16 MB storage limit. Export a copy of your history and contact support for help. Your saved data is preserved.",
+      "Dein Arbeitsbereich hat sein Speicherlimit von 16 MB erreicht. Exportiere eine Kopie deines Verlaufs und kontaktiere den Support. Deine gespeicherten Daten bleiben erhalten.",
+    ],
+    ACCOUNT_LINK_REQUIRED: [
+      "An existing account already uses this email. Contact support to link it securely.",
+      "Ein bestehendes Konto verwendet diese E-Mail. Kontaktiere den Support, um es sicher zu verknüpfen.",
+    ],
+    GOOGLE_NOT_CONFIGURED: [
+      "Google sign-in is not available yet. Use email or try again later.",
+      "Google-Anmeldung ist noch nicht verfügbar. Nutze E-Mail oder versuche es später.",
+    ],
+    GOOGLE_ALREADY_PENDING: [
+      "A Google sign-in is already open. Complete or cancel it first.",
+      "Eine Google-Anmeldung ist bereits offen. Schliesse sie ab oder brich sie zuerst ab.",
+    ],
+    GOOGLE_AUTH_FAILED: [
+      "Google sign-in could not be completed. Please try again.",
+      "Die Google-Anmeldung konnte nicht abgeschlossen werden. Versuche es erneut.",
+    ],
+    GOOGLE_CANCELLED: [
+      "Google sign-in was cancelled. Your account is unchanged.",
+      "Google-Anmeldung abgebrochen. Dein Konto ist unverändert.",
+    ],
+    GOOGLE_EXPIRED: [
+      "This sign-in has expired. Please start again.",
+      "Diese Anmeldung ist abgelaufen. Bitte beginne erneut.",
+    ],
+    REAUTH_REQUIRED: [
+      "Please sign in again before deleting your account.",
+      "Melde dich vor dem Löschen deines Kontos erneut an.",
+    ],
     SIGN_IN_REQUIRED: ["Please sign in to continue.", "Bitte melde dich an."],
     INVALID_LOGIN: [
       "Email or password is incorrect.",
